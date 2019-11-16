@@ -1,13 +1,14 @@
-# Journal++ aka *jpp*
+# 📖 Journal++ aka *jpp*
 
 jpp is a modern Python journal application. It allows you to 
 quickly jot down your thoughts right from the command line. All your journals 
 will be stored as text, which means you can simply put them into cloud storage
 or put it on a USB flash drive and access it from anywhere, even without jpp. 
-It takes a lot of inspiration from [jrnl](https://github.com/jrnl-org/jrnl),
-but is rewritten from the ground up in modern Python, making it easier to extend
-and maintain. Currently, it is still in the beginner phase, but some nice
-additional features are already planned. 
+It takes a lot of inspiration from [jrnl](https://github.com/jrnl-org/jrnl) and
+tries to create a similar interface that is just as easy to use, but jpp is 
+rewritten from the ground up in modern Python, aiming for a more stable 
+and reliable experience. Currently, jpp is still in an early stage, but some
+nice additional features are planned. 
 
 ## Journaling
 Writing about your daily routine has been linked to therapeutic health benefits 
