@@ -1,5 +1,4 @@
 import argparse
-import functools
 import locale
 import os
 import shlex
@@ -10,15 +9,17 @@ import time
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkstemp
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 from dateparser import parse
-from jpp.writing import dateparse_time_locale, parse_entry
+from jpp.utils import ask, print_err, yes_no
+from jpp.writing import Journal, create_file_journal, dateparse_time_locale, parse_entry
 
 from . import __version__
 from .config import _DEFAULT_JPP_HOME, JPP_HOME_ENV, AppConfig, get_config_path
 
 
+min_entry_length = 1
 msg_delay = 0.3
 
 _welcome_message = """\
@@ -89,22 +90,36 @@ def parse_datetime(dt_string: str, config: AppConfig) -> datetime:
     return parse(dt_string)  # let dateparser guess the locale
 
 
-def compose() -> None:
+def compose(journal_name: Optional[str]) -> None:
     editor = _user_editor()
     if editor:
+        print_err("Opening your editor now. Save and close to compose your entry")
         tmpfile_handle, tmpfile_path = mkstemp(suffix="jpp.txt", text=True)
         subprocess.call(editor + [tmpfile_path])
         os.close(tmpfile_handle)
 
         with open(tmpfile_path, "r") as fp:
-            new_entry = fp.read()
+            entry_string = fp.read()
 
         os.unlink(tmpfile_path)
     else:
-        new_entry = sys.stdin.read()
+        print_err(
+            "Composing a new entry, press ctrl+d to finish writing"
+            " (ctrl+c to cancel)"
+        )
+        entry_string = sys.stdin.read()
 
-    # handle empty entry
-    print_err("You wrote:", parse_entry(new_entry))
+    print_err()
+
+    if len(entry_string) < min_entry_length:
+        print_err("Did you try to type something?")
+        sys.exit(0)
+
+    entry = parse_entry(entry_string)
+    journal = Journal.from_name(journal_name)
+    journal.add(entry)
+
+    print_err("Entry saved")
 
 
 def setup_sync() -> bool:
@@ -118,8 +133,8 @@ def setup_sync() -> bool:
 
 
 def install() -> None:
-    time_locale = None
-    date_order = None
+    time_locale = ""
+    date_order = ""
     time_first = None
     journal_dir = os.getenv(JPP_HOME_ENV)
 
@@ -145,7 +160,7 @@ def install() -> None:
         print_err(_divider)
         time.sleep(msg_delay)
 
-        if git_sync != "n":
+        if git_sync:
             from .gitsync import init
 
             init()
@@ -196,14 +211,18 @@ def install() -> None:
     print_err(_divider)
     time.sleep(msg_delay)
 
+    create_file_journal(default_journal)
+
     config = AppConfig()
     config.set("default_journal", default_journal)
     config.set("journal_directory", journal_dir)
     config.set("git_sync", git_sync)
     if date_order:
         config.set("date_order", date_order)
+
     if time_first:
         config.set("time_before_date", time_first)
+
     if time_locale:
         config.set("time_locale", time_locale)
 
@@ -211,61 +230,6 @@ def install() -> None:
     print_err("Hit enter to start writing your first entry...")
     print_err()
     input()
-
-
-def yes_no(prompt: str, default: Optional[bool] = None) -> bool:
-    default_string = {True: "y", False: "n", None: None}[default]
-    answer = ask(prompt, options=["y", "n"], default=default_string)
-    return answer == "y"
-
-
-def ask(
-    prompt: str,
-    options: Optional[List[str]] = None,
-    default: Optional[str] = "",
-    validator: Optional[Callable[[str], bool]] = None,
-) -> str:
-    assert not options or not validator, "Can't use both a validator and options"
-
-    default = default or ""
-    options_string = f"[{'/'.join(options)}] " if options else ""
-    prompt += f" (leave blank for '{default}')" if default else ""
-    prompt += "? "
-    prompt += options_string
-
-    if not options and not validator:
-        return input_err(prompt) or default
-
-    assert not default or not options or default in options
-
-    def validate(answ: str) -> bool:
-        if options:
-            return answ in options
-
-        return validator(answ) if validator else True
-
-    answer = input_err(prompt) or default
-    while not validate(answer):
-        if options:
-            print_err(
-                f"I can't understand your answer, please type one of {options_string}"
-            )
-        else:
-            print_err("Invalid answer, please try again")
-        answer = input_err(prompt) or default
-
-    return answer
-
-
-def input_err(prompt: str = "") -> str:
-    """
-    Works just like input(), but writes the prompt to stderr instead of stdout.
-    """
-    print_err(prompt, end="")
-    return input()
-
-
-print_err = functools.partial(print, file=sys.stderr)
 
 
 def _user_editor() -> Optional[List[str]]:
@@ -295,4 +259,4 @@ def main() -> None:
     if not _is_installed():
         install()
 
-    compose()
+    compose(None)

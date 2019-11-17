@@ -64,4 +64,5 @@ def get_jpp_home() -> Path:
     # get from app config?
     jpp_home_env = os.getenv(JPP_HOME_ENV)
     jpp_home = Path(jpp_home_env) if jpp_home_env else _DEFAULT_JPP_HOME
+    jpp_home.mkdir(parents=True, exist_ok=True)  # ensure exists
     return jpp_home

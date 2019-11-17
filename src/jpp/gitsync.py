@@ -1,4 +1,4 @@
-from .cli import print_err
+from jpp.utils import print_err
 
 
 def init() -> None:

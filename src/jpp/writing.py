@@ -1,6 +1,7 @@
 import bisect
 import locale
 import re
+import sys
 
 from datetime import datetime
 from pathlib import Path
@@ -8,7 +9,9 @@ from typing import List, NamedTuple, Optional
 
 import dateparser
 
-from .config import get_jpp_home
+from jpp.utils import print_err, yes_no
+
+from .config import AppConfig, get_jpp_home
 
 
 SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
@@ -24,11 +27,23 @@ class Journal:
     def __init__(self, path: Path):
         self.name = path.stem
         self.path = path
+        if not path.exists():
+            print_err(f"Journal '{self.name}' does not exist at path {self.path}")
+            if not yes_no("Do you want to recreate it", default=True):
+                sys.exit(1)
+
+            create_file_journal(self.name)
 
     @classmethod
-    def from_name(cls, name: str) -> "Journal":
+    def from_name(cls, name: Optional[str]) -> "Journal":
         home = get_jpp_home()
-        journal_path = home / name
+        name = name or AppConfig().get("default_journal")
+        if not name:
+            raise RuntimeError(
+                "No journal specified and no default journal set in the config"
+            )
+
+        journal_path = home / (name + ".md")
         return cls(journal_path)
 
     def add(self, entry: Entry) -> None:
@@ -45,8 +60,14 @@ class Journal:
 
         entry_texts = re.split(r"^## ", journal_text, flags=re.MULTILINE)
         entry_texts = entry_texts[1:]  # skip first since it's an empty string
-        entries = [md_deserialize(text) for text in entry_texts]
+        entries = [md_deserialize("## " + text) for text in entry_texts]
         return entries
+
+
+def create_file_journal(name: str) -> None:
+    home = get_jpp_home()
+    journal_path = home / (name + ".md")
+    journal_path.touch(0o700)
 
 
 def md_serialize(entry: Entry) -> str:
@@ -64,7 +85,7 @@ def md_serialize(entry: Entry) -> str:
 
 def md_deserialize(entry_text: str) -> Entry:
     entry_text = entry_text.strip()
-    if not entry_text[0:3] == "## ":
+    if not entry_text[:3] == "## ":
         raise ValueError(f"Cannot read entry, malformed:\n'{entry_text}'")
 
     entry_text = entry_text[3:]
