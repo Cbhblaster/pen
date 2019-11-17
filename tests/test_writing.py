@@ -1,14 +1,16 @@
 from datetime import datetime
+from typing import Any, Callable
 
 import dateparser
 import hypothesis.strategies as st
 import pytest
+
 from hypothesis import assume, example, given
 from jpp.writing import parse_entry
 
 
 @pytest.fixture(autouse=True, scope="session")
-def init_dateparser():
+def init_dateparser() -> None:
     """The first call to parse is really slow, which makes hypothesis unhappy because
     of inconsistent test times.
     """
@@ -16,7 +18,7 @@ def init_dateparser():
 
 
 @pytest.fixture(autouse=True)
-def lc_time(monkeypatch):
+def lc_time(monkeypatch: Any) -> None:
     monkeypatch.setenv("LC_TIME", "en_US")
 
 
@@ -33,7 +35,7 @@ valid_title = st.text(
 
 
 @st.composite
-def body(draw):
+def body(draw: Callable) -> None:
     """First char of body has to be non-whitespace and non-punctuation"""
     first_char = draw(st.characters(whitelist_categories=["L", "M", "S"]))
     body = draw(st.text())
@@ -45,7 +47,7 @@ def body(draw):
 
 @given(valid_dt_strings, valid_title, punctuation, body())
 @example(date="", title="not a date: bar", punct="", body="")
-def test_parse_valid_user_input(date: str, title: str, punct: str, body: str):
+def test_parse_valid_user_input(date: str, title: str, punct: str, body: str) -> None:
     assume(not body or punct)
     assume(title.strip())
 

@@ -1,4 +1,5 @@
 import os
+
 from pathlib import Path
 from typing import Any, Optional
 
@@ -7,10 +8,11 @@ from tomlkit.toml_file import TOMLFile
 
 from .utils import merge_dicts
 
+
 HOME = Path(os.path.expandvars("$HOME"))
 JPP_HOME_ENV = "JPP_HOME"
-DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
-DEFAULT_JPP_HOME = HOME / ".local" / "jpp"
+_DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
+_DEFAULT_JPP_HOME = HOME / ".local" / "jpp"
 
 
 class AppConfig:
@@ -19,15 +21,15 @@ class AppConfig:
     or removing jpp settings.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._config = TOMLDocument()
         self._config_file = _config_file()
         merge_dicts(self._config, self._config_file.read())
 
-    def get(self, key: str, default: Optional[str] = None):
+    def get(self, key: str, default: Optional[str] = None) -> Any:
         return self._config.get(key, default)
 
-    def set(self, key: str, value: Any):
+    def set(self, key: str, value: Any) -> None:
         keys = key.split(".")
         config = self._config
 
@@ -55,12 +57,11 @@ def _config_file() -> TOMLFile:
 
 
 def get_config_path() -> Path:
-    """
-    Uses environment variable to get the jpp config path, if it is not set uses
-    default xdg config directory instead.
+    return _DEFAULT_CONFIG_PATH
 
-    :return: path to jpp config file
-    """
-    config_env = os.getenv(JPP_HOME_ENV)
-    config_path = Path(config_env) / "jpp.toml" if config_env else DEFAULT_CONFIG_PATH
-    return config_path
+
+def get_jpp_home() -> Path:
+    # get from app config?
+    jpp_home_env = os.getenv(JPP_HOME_ENV)
+    jpp_home = Path(jpp_home_env) if jpp_home_env else _DEFAULT_JPP_HOME
+    return jpp_home

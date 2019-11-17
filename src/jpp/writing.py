@@ -1,9 +1,14 @@
+import locale
 import re
+
 from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple, Optional
 
 import dateparser
+
+from .config import get_jpp_home
+
 
 SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
 
@@ -15,14 +20,18 @@ class Entry(NamedTuple):
 
 
 class Journal:
-    def __init__(self, name: str, path: Path):
-        assert path.exists()
-        assert name
-        self.name = name
+    def __init__(self, path: Path):
+        self.name = path.stem
         self.path = path
 
+    @classmethod
+    def from_name(cls, name: str) -> "Journal":
+        home = get_jpp_home()
+        journal_path = home / name
+        return cls(journal_path)
 
-def md_serialize(entry: Entry):
+
+def md_serialize(entry: Entry) -> str:
     """Converts entry to markdown compatible string ready to write to file"""
     entry_date = entry.date.strftime(SERIALIZED_DATE_FORMAT)
     entry_string = f"## {entry_date} {entry.title}"
@@ -54,3 +63,21 @@ def parse_entry(text: str, date: Optional[datetime] = None) -> Entry:
 
 def parse_date(date_string: str) -> datetime:
     return dateparser.parse(date_string, locales=["en"])  # todo user preferences
+
+
+def dateparse_time_locale() -> Optional[str]:
+    _ = locale.setlocale(locale.LC_ALL, "")
+    lc_time = locale.getlocale(locale.LC_TIME)[0]
+
+    try:
+        _ = dateparser.parse("01.01.2000", locales=[lc_time.replace("_", "-")])
+        return lc_time
+    except ValueError:
+        try:
+            language = lc_time.replace("_", "-").split("-")[0]
+            _ = dateparser.parse("01.01.2000", locales=[language])
+            return language
+        except ValueError:
+            pass
+
+    return None

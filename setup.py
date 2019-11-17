@@ -2,9 +2,10 @@ from os.path import abspath, dirname, join
 
 from setuptools import find_packages, setup
 
+
 # Bump src/jpp/__init__.py __version__ as well.
 VERSION = "0.1.0"
-REQUIREMENTS = ["dateparser", "tomlkit", "xdg"]
+REQUIREMENTS = ["dateparser", "tomlkit"]
 
 
 def read_file(filename):

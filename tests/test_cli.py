@@ -1,6 +1,8 @@
+from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
+
 from jpp.cli import ask, yes_no
 
 
@@ -14,7 +16,7 @@ from jpp.cli import ask, yes_no
         ([""], False, False),
     ],
 )
-def test_yes_no(inputs, default, expected):
+def test_yes_no(inputs: List[str], default: Optional[bool], expected: bool) -> None:
     question = "foobar"
     with patch("builtins.input", side_effect=iter(inputs)):
         answer = yes_no(question, default)
@@ -31,7 +33,9 @@ def test_yes_no(inputs, default, expected):
         ([""], ["foo", "bar"], "bar", "bar"),
     ],
 )
-def test_ask(inputs, options, default, expected):
+def test_ask(
+    inputs: List[str], options: Optional[List[str]], default: str, expected: str
+) -> None:
     question = "foobar"
     with patch("builtins.input", side_effect=iter(inputs)):
         answer = ask(question, options, default)
@@ -39,7 +43,7 @@ def test_ask(inputs, options, default, expected):
     assert answer is expected
 
 
-def test_ask_validator():
+def test_ask_validator() -> None:
     question = "foobar"
     expected = "bar"
     with patch("builtins.input", side_effect=iter(["foo", "bar"])):
