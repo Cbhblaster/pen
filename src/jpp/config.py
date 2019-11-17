@@ -2,14 +2,15 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from jpp.utils import merge_dicts
 from tomlkit.toml_document import TOMLDocument
 from tomlkit.toml_file import TOMLFile
-from xdg import XDG_DATA_HOME
 
+from .utils import merge_dicts
+
+HOME = Path(os.path.expandvars("$HOME"))
 JPP_HOME_ENV = "JPP_HOME"
-DEFAULT_JPP_HOME = XDG_DATA_HOME / "jpp"
-DEFAULT_CONFIG_PATH = DEFAULT_JPP_HOME / "jpp.toml"
+DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
+DEFAULT_JPP_HOME = HOME / ".local" / "jpp"
 
 
 class AppConfig:
@@ -18,13 +19,8 @@ class AppConfig:
     or removing jpp settings.
     """
 
-    default_config = {
-        "tagsymbols": "@",
-    }
-
     def __init__(self):
         self._config = TOMLDocument()
-        merge_dicts(self._config, self.default_config)
         self._config_file = _config_file()
         merge_dicts(self._config, self._config_file.read())
 
