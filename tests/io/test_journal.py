@@ -1,3 +1,4 @@
+import itertools
 from datetime import datetime
 from typing import List, Type
 
@@ -6,7 +7,7 @@ import pytest
 from hypothesis import example, given
 
 from jpp import Entry
-from jpp.io.journal import Serializer
+from jpp.io.journal import SerializationError, Serializer
 
 from ..strategies import body, datetime_without_seconds, title
 from ..utils import dt_equals_in_minutes
@@ -48,3 +49,25 @@ def test_serialize_multiple(
         assert dt_equals_in_minutes(entry.date, expected.date)
         assert entry.title == expected.title
         assert entry.body == expected.body
+
+
+_invalid_entries = [
+    "## ",
+    "##  - no date",
+    "## 2019-01-01 09:30 - ",
+    "## 2019-01-01 09:30 no seperator",
+    "## 2019-30-01 09:30 - invalid date",
+    "## 2019-30-01 - no time",
+    "## 2019-30-01 25:30 - invalid time",
+]
+
+
+@pytest.mark.parametrize(
+    "serializer_cls,entry_string", itertools.product(serializers, _invalid_entries)
+)
+def test_deserialize_fail_on_invalid(
+    serializer_cls: Type[Serializer], entry_string: str
+) -> None:
+    serializer = serializer_cls()
+    with pytest.raises(SerializationError):
+        _ = list(serializer.deserialize(entry_string))

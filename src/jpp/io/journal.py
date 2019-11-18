@@ -76,26 +76,31 @@ class MarkdownSerializer(Serializer):
 
     def _split_entries(self, journal_text: str) -> List[str]:
         if not journal_text.lstrip()[:3] == "## ":
-            raise ValueError(f"Cannot read markdown journal, it seems to be malformed")
+            raise SerializationError(
+                f"Cannot read markdown journal, it seems to be malformed"
+            )
 
         entry_texts = re.split(r"^## ", journal_text, flags=re.MULTILINE)
         return entry_texts[1:]  # skip first since it's an empty string
 
     def _deserialize_entry(self, entry_text: str) -> Entry:
         entry_text = entry_text.strip()
-
         title_line, *body_lines = entry_text.split("\n")
-        date_str, title = title_line.split(" - ")
-        date = datetime.strptime(date_str, SERIALIZED_DATE_FORMAT)
-        if not date:
-            raise ValueError(
-                f"Cannot read entry, date missing or invalid:\n'{entry_text}'"
-            )
+
+        try:
+            date_str, title = title_line.split(" - ", 1)
+            date = datetime.strptime(date_str, SERIALIZED_DATE_FORMAT)
+        except ValueError as err:
+            raise SerializationError(
+                f"Cannot read entry, entry malformed:\n'{entry_text}'"
+            ) from err
 
         if not title:
-            raise ValueError(f"Cannot read entry, title missing:\n'{entry_text}'")
+            raise SerializationError(
+                f"Cannot read entry, title missing:\n'{entry_text}'"
+            )
 
-        body = "\n".join(body_lines) if body_lines else ""
+        body = "\n".join(body_lines)
         body = re.sub(r"^##(#+)", r"\g<1>", body, flags=re.MULTILINE)
 
         return Entry(date, title, body)
