@@ -43,15 +43,22 @@ location of the synced directory.
 
 ## (Planned) Features
 
- * Fully text based ✔
- * Multiple Journals ❌
- * Filtering by date, tag ❌
- * Fast Search ❌
- * Custom Prompts ❌
- * git sync ❌
- * Encryption ❌
- * Tags ❌
- * Easy Export to other formats ❌
+Implemented features are marked with a ✔, planned features with a ❌.
+
+| Feature | ? | Note |
+|---------|---|------|
+| Fully text based | ✔ | |
+| Multiple Journals | ✔ | |
+| Journals as single file | ✔ |  |
+| Tags | ❌ | |
+| Star entries (favourite) | ❌ | |
+| Filtering by date, tag, starred | ❌ | |
+| Fast Search | ❌ | |
+| git sync | ❌ | Can still use cloud<br>(Dropbox, etc.) to sync|
+| Custom Prompts | ❌ | |
+| Store in different file formats | ❌ | implemented: .md |
+| Journals as hierarchical directory | ❌ |  |
+| Encryption | ❌ | |
 
 ## References
 

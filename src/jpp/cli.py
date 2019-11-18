@@ -1,26 +1,28 @@
 import argparse
-import locale
 import os
-import shlex
 import subprocess
 import sys
 import time
-
-from datetime import datetime
 from pathlib import Path
 from tempfile import mkstemp
-from typing import List, Optional
-
-from dateparser import parse
-from jpp.utils import ask, print_err, yes_no
-from jpp.writing import Journal, create_file_journal, dateparse_time_locale, parse_entry
+from typing import List, Optional, Sequence, Tuple
 
 from . import __version__
-from .config import _DEFAULT_JPP_HOME, JPP_HOME_ENV, AppConfig, get_config_path
+from .io.config import (
+    _DEFAULT_JPP_HOME,
+    JPP_HOME_ENV,
+    app_config,
+    env_locale,
+    get_config_path,
+    user_editor,
+)
+from .io.journal import Journal, create_file_journal, read
+from .parsing import convert_to_dateparser_locale, parse_entry
+from .utils import ask, print_err, yes_no
 
 
 min_entry_length = 1
-msg_delay = 0.3
+msg_delay = 0.3  # a bit of delay makes the walls of text a bit easier to follow
 
 _welcome_message = """\
 ********** Welcome to jpp! **********
@@ -77,24 +79,13 @@ _divider = """
 """
 
 
-def parse_datetime(dt_string: str, config: AppConfig) -> datetime:
-    if config.get("date_format"):
-        return parse(dt_string, date_formats=[config.get("date_format")])
-
-    if config.get("locales"):
-        return parse(dt_string, languages=[config.get("locales")])
-
-    if config.get("date_order"):
-        return parse(dt_string, settings={"DATE_ORDER": config.get("date_order")})
-
-    return parse(dt_string)  # let dateparser guess the locale
-
-
 def compose(journal_name: Optional[str]) -> None:
-    editor = _user_editor()
+    editor = user_editor()
+    journal = Journal.from_name(journal_name)
+
     if editor:
         print_err("Opening your editor now. Save and close to compose your entry")
-        tmpfile_handle, tmpfile_path = mkstemp(suffix="jpp.txt", text=True)
+        tmpfile_handle, tmpfile_path = mkstemp(suffix="-jpp.txt", text=True)
         subprocess.call(editor + [tmpfile_path])
         os.close(tmpfile_handle)
 
@@ -112,11 +103,10 @@ def compose(journal_name: Optional[str]) -> None:
     print_err()
 
     if len(entry_string) < min_entry_length:
-        print_err("Did you try to type something?")
-        sys.exit(0)
+        print_err("Entry not saved. Did you type something?")
+        sys.exit(1)
 
     entry = parse_entry(entry_string)
-    journal = Journal.from_name(journal_name)
     journal.add(entry)
 
     print_err("Entry saved")
@@ -127,7 +117,7 @@ def setup_sync() -> bool:
     print_err(_divider)
 
     if git_sync:
-        pass  # ask for url and pull repo
+        pass  # todo ask for url and pull repo
 
     return git_sync
 
@@ -178,8 +168,9 @@ def install() -> None:
 
         # todo check if journals already exist in journal_directory
 
-    if dateparse_time_locale():
-        time_locale = locale.getlocale(locale.LC_TIME)[0]
+    locale_from_env = env_locale()
+    if locale_from_env and convert_to_dateparser_locale(locale_from_env):
+        time_locale = locale_from_env
         print_err(_locale_message.format(time_locale))
         print_err(_divider)
         time.sleep(msg_delay)
@@ -213,18 +204,17 @@ def install() -> None:
 
     create_file_journal(default_journal)
 
-    config = AppConfig()
-    config.set("default_journal", default_journal)
-    config.set("journal_directory", journal_dir)
-    config.set("git_sync", git_sync)
+    app_config.set("default_journal", default_journal)
+    app_config.set("journal_directory", journal_dir)
+    app_config.set("git_sync", git_sync)
     if date_order:
-        config.set("date_order", date_order)
+        app_config.set("date_order", date_order)
 
     if time_first:
-        config.set("time_before_date", time_first)
+        app_config.set("time_before_date", time_first)
 
     if time_locale:
-        config.set("time_locale", time_locale)
+        app_config.set("locale", time_locale)
 
     print_err("All done! You can now start using jpp!")
     print_err("Hit enter to start writing your first entry...")
@@ -232,17 +222,66 @@ def install() -> None:
     input()
 
 
-def _user_editor() -> Optional[List[str]]:
-    editor = os.getenv("VISUAL") or os.getenv("EDITOR")
-    return shlex.split(editor, posix="win" not in sys.platform) if editor else None
+def compose_command(args: argparse.Namespace) -> None:
+    compose(args.journal)
+
+
+def read_command(args: argparse.Namespace) -> None:
+    read(args.journal, args.last_n)
+
+
+class DefaultSubcommandArgParser(argparse.ArgumentParser):
+    """Argparser that allows setting a default subcommand.
+    When the cli user omits the subcommand, the default one is executed automatically.
+
+    Adapted from https://stackoverflow.com/a/37593636/5266392
+    """
+
+    _default_subparser = None
+
+    def set_default_subparser(self, name: str) -> None:
+        self._default_subparser = name
+
+    # noinspection PyProtectedMember
+    def _parse_known_args(
+        self, arg_strings: List[str], namespace: argparse.Namespace
+    ) -> Tuple[argparse.Namespace, List[str]]:
+        if not self._subparsers:
+            return super()._parse_known_args(arg_strings, namespace)
+
+        default_sp = self._default_subparser
+        if default_sp is not None and not {"-h", "--help"}.intersection(
+            set(arg_strings)
+        ):
+
+            for x in self._subparsers._actions:
+                subparser_found = isinstance(x, argparse._SubParsersAction) and set(
+                    arg_strings[:2]
+                ).intersection(x._name_parser_map.keys())
+                if subparser_found:
+                    break
+            else:
+                if arg_strings:
+                    if arg_strings[0].startswith("-"):
+                        # if first argument is an option, add default arg
+                        # before that
+                        arg_strings = [default_sp] + arg_strings
+                    else:
+                        # if first argument is not an option, it's a journal name
+                        # insert default argument afterwards
+                        arg_strings.insert(1, default_sp)
+                else:
+                    arg_strings = [default_sp]
+        return super()._parse_known_args(arg_strings, namespace=namespace)
 
 
 def _is_installed() -> bool:
     return get_config_path().exists()
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(prog="jpp")
+def main(argv: Optional[Sequence[str]] = None) -> None:
+    parser = DefaultSubcommandArgParser(prog="jpp")
+
     parser.add_argument(
         "-V",
         "--version",
@@ -252,11 +291,35 @@ def main() -> None:
         help="Prints version information and exits",
     )
 
-    args = parser.parse_args()
-    if "func" in args:
-        args.func()
+    parser.add_argument(
+        "journal",
+        default=None,
+        type=str,
+        nargs="?",
+        help="Journal you want to write to (default can be set in your jpp config)",
+    )
+
+    subparsers = parser.add_subparsers()
+
+    compose_parser = subparsers.add_parser("compose")
+    compose_parser.set_defaults(func=compose_command)
+
+    read_parser = subparsers.add_parser("read")
+    read_parser.set_defaults(func=read_command)
+    read_parser.add_argument(
+        "-n",
+        dest="last_n",
+        default=None,
+        metavar="N",
+        type=int,
+        help="Shows the last n entries matching the filter.",
+    )
+
+    parser.set_default_subparser("compose")
+    parsed_args = parser.parse_args(argv)
 
     if not _is_installed():
         install()
 
-    compose(None)
+    if "func" in parsed_args:
+        parsed_args.func(parsed_args)

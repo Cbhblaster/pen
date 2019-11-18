@@ -39,6 +39,7 @@ setup(
     ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    package_data={"jpp": ["py.typed"]},
     install_requires=REQUIREMENTS,
     entry_points={"console_scripts": ["jpp=jpp.cli:main"]},
 )

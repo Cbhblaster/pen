@@ -1,12 +1,14 @@
+import locale
 import os
-
+import shlex
+import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from tomlkit.toml_document import TOMLDocument
 from tomlkit.toml_file import TOMLFile
 
-from .utils import merge_dicts
+from ..utils import merge_dicts
 
 
 HOME = Path(os.path.expandvars("$HOME"))
@@ -15,7 +17,7 @@ _DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
 _DEFAULT_JPP_HOME = HOME / ".local" / "jpp"
 
 
-class AppConfig:
+class _AppConfig:
     """
     Config class, abstracts reading and writing to file and adding, editing
     or removing jpp settings.
@@ -60,9 +62,38 @@ def get_config_path() -> Path:
     return _DEFAULT_CONFIG_PATH
 
 
+app_config = _AppConfig()  # todo: better way to handle configuration
+
+
 def get_jpp_home() -> Path:
     # get from app config?
     jpp_home_env = os.getenv(JPP_HOME_ENV)
     jpp_home = Path(jpp_home_env) if jpp_home_env else _DEFAULT_JPP_HOME
     jpp_home.mkdir(parents=True, exist_ok=True)  # ensure exists
     return jpp_home
+
+
+def env_locale() -> Optional[str]:
+    _ = locale.setlocale(locale.LC_ALL, "")  # needed to initialize locales
+    lc_time_tuple = locale.getlocale(locale.LC_TIME)  # = (locale, encoding)
+
+    if not lc_time_tuple:
+        return None
+
+    # discard the encoding
+    lc_time = lc_time_tuple[0]
+    return lc_time
+
+
+def user_locale() -> Optional[str]:
+    config_locale = app_config.get("locale")
+
+    if config_locale:
+        return config_locale
+
+    return env_locale()
+
+
+def user_editor() -> Optional[List[str]]:
+    editor = os.getenv("VISUAL") or os.getenv("EDITOR")
+    return shlex.split(editor, posix="win" not in sys.platform) if editor else None

@@ -1,6 +1,5 @@
 import functools
 import sys
-
 from collections import Mapping
 from typing import Callable, List, Optional
 

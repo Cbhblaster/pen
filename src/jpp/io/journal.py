@@ -1,0 +1,173 @@
+import bisect
+import itertools
+import re
+import sys
+from abc import ABC, abstractmethod
+from datetime import datetime
+from pathlib import Path
+from typing import Iterable, Iterator, List, Optional
+
+from .. import Entry
+from ..utils import print_err, yes_no
+from .config import app_config, get_jpp_home
+
+
+SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
+
+
+class SerializationError(Exception):
+    pass
+
+
+class Serializer(ABC):
+    file_ending = ""
+
+    def serialize(self, entries: Iterable[Entry]) -> str:
+        """Converts entries to markdown compatible string ready to write to file.
+        Expects entries to be sorted by date newest to oldest."""
+        entry_string = "\n\n\n".join(
+            self._serialize_entry(entry) for entry in reversed(list(entries))
+        )
+
+        return entry_string
+
+    def deserialize(self, journal_text: str) -> Iterator[Entry]:
+        """Takes a serialized journal as text, splits the text into individual entries
+        and parses each entry. Returns an iterator over the entries newest to oldest.
+        """
+        if not journal_text:
+            return iter([])
+
+        journal_text = journal_text.strip()
+        entry_texts = self._split_entries(journal_text)
+        # lazy evaluation, only deserialize the entries that are actually needed
+        entries = (
+            self._deserialize_entry(entry_text) for entry_text in reversed(entry_texts)
+        )
+        return entries
+
+    @abstractmethod
+    def _serialize_entry(self, entry_text: Entry) -> str:
+        pass
+
+    @abstractmethod
+    def _split_entries(self, journal_text: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    def _deserialize_entry(self, entry_text: str) -> Entry:
+        pass
+
+
+class MarkdownSerializer(Serializer):
+    file_ending = ".md"
+
+    def _serialize_entry(self, entry: Entry) -> str:
+        entry_date = entry.date.strftime(SERIALIZED_DATE_FORMAT)
+        entry_string = f"## {entry_date} - {entry.title}"
+        if entry.body:
+            # we use '## ' to denote a new entry, so we need to escape occurences
+            # of '#' in the body at the start of lines by adding two more '#'
+            body = re.sub(r"^#", "###", entry.body, flags=re.MULTILINE)
+            entry_string += "\n" + body
+
+        entry_string += "\n"
+        return entry_string
+
+    def _split_entries(self, journal_text: str) -> List[str]:
+        if not journal_text.lstrip()[:3] == "## ":
+            raise ValueError(f"Cannot read markdown journal, it seems to be malformed")
+
+        entry_texts = re.split(r"^## ", journal_text, flags=re.MULTILINE)
+        return entry_texts[1:]  # skip first since it's an empty string
+
+    def _deserialize_entry(self, entry_text: str) -> Entry:
+        entry_text = entry_text.strip()
+
+        title_line, *body_lines = entry_text.split("\n")
+        date_str, title = title_line.split(" - ")
+        date = datetime.strptime(date_str, SERIALIZED_DATE_FORMAT)
+        if not date:
+            raise ValueError(
+                f"Cannot read entry, date missing or invalid:\n'{entry_text}'"
+            )
+
+        if not title:
+            raise ValueError(f"Cannot read entry, title missing:\n'{entry_text}'")
+
+        body = "\n".join(body_lines) if body_lines else ""
+        body = re.sub(r"^##(#*) ", r"\g<1> ", body, flags=re.MULTILINE)
+
+        return Entry(date, title, body)
+
+
+class Journal:
+    def __init__(self, path: Path, serializer: Serializer):
+        self.serializer = serializer
+        self.path = path
+        self.name = path.stem
+
+        if not path.exists():
+            print_err(f"Journal '{self.name}' does not exist at path {self.path}")
+            if not yes_no("Do you want to create it", default=True):
+                sys.exit(1)
+            print_err()
+
+            create_file_journal(self.name)
+
+    @classmethod
+    def from_name(cls, name: Optional[str]) -> "Journal":
+        home = get_jpp_home()
+        name = name or app_config.get("default_journal")
+        if not name:
+            raise RuntimeError(
+                "No journal specified and no default journal set in the config"
+            )
+
+        journal_path = home / (name + ".md")
+        return cls(
+            journal_path, MarkdownSerializer()
+        )  # get serializer from index/filename
+
+    def add(self, entry: Entry) -> None:
+        entries = list(reversed(self.read()))  # get entries sorted by date ascending
+
+        # sorted O(n) insert (inserts based on entry.date which is why we needed to
+        # reverse the list above)
+        bisect.insort(entries, entry)
+
+        with self.path.open("w") as fp:
+            # reverse it again before writing to get it in the same order
+            fp.write(self.serializer.serialize(reversed(entries)))
+
+    def read(self, last_n: Optional[int] = None) -> List[Entry]:
+        """Reads journal from disk and returns the *last_n* entries, ordered by
+        date from most recent to least."""
+        last_n = abs(last_n) if last_n else None
+        with self.path.open("r") as fp:
+            journal_text = fp.read()
+
+        entries = self.serializer.deserialize(journal_text)
+        try:
+            return list(itertools.islice(entries, last_n))
+        except ValueError as err:
+            raise SerializationError(
+                f"Journal at {self.path} could not be read."
+                f" Did you modify it by hand?",
+            ) from err
+
+    def pprint(self, last_n: Optional[int] = None) -> None:
+        entries = self.read(last_n)
+
+        print(self.serializer.serialize(reversed(entries)))
+
+
+def create_file_journal(name: str) -> None:
+    home = get_jpp_home()
+    journal_path = home / (name + ".md")
+    journal_path.touch(0o700)
+
+
+def read(journal_name: Optional[str] = None, last_n: Optional[int] = None) -> None:
+    journal = Journal.from_name(journal_name)
+    journal.pprint(last_n)
