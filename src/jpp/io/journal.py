@@ -118,7 +118,7 @@ class Journal:
                 sys.exit(1)
             print_err()
 
-            create_file_journal(self.name)
+            self._create()
 
     @classmethod
     def from_name(cls, name: Optional[str]) -> "Journal":
@@ -166,11 +166,12 @@ class Journal:
 
         print(self.serializer.serialize(reversed(entries)))
 
-
-def create_file_journal(name: str) -> None:
-    home = get_jpp_home()
-    journal_path = home / (name + ".md")
-    journal_path.touch(0o700)
+    def _create(self) -> None:
+        home = get_jpp_home()
+        journal_path = home / (self.name + self.serializer.file_ending)
+        journal_path.touch(0o700)
+        print_err(f"Created journal {self.name} at {self.path}")
+        print_err()
 
 
 def read(journal_name: Optional[str] = None, last_n: Optional[int] = None) -> None:

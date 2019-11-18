@@ -16,7 +16,7 @@ from .io.config import (
     get_config_path,
     user_editor,
 )
-from .io.journal import Journal, create_file_journal, list_journals, read
+from .io.journal import Journal, list_journals, read
 from .parsing import convert_to_dateparser_locale, parse_entry
 from .utils import ask, print_err, yes_no
 
@@ -201,8 +201,6 @@ def install() -> None:
     )
     print_err(_divider)
     time.sleep(msg_delay)
-
-    create_file_journal(default_journal)
 
     app_config.set("default_journal", default_journal)
     app_config.set("journal_directory", journal_dir)
