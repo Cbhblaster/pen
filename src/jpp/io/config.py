@@ -11,7 +11,7 @@ from tomlkit.toml_file import TOMLFile
 from ..utils import merge_dicts
 
 
-HOME = Path(os.path.expandvars("$HOME"))
+HOME = Path().home()
 JPP_HOME_ENV = "JPP_HOME"
 _DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
 _DEFAULT_JPP_HOME = HOME / ".local" / "jpp"

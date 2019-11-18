@@ -96,7 +96,7 @@ class MarkdownSerializer(Serializer):
             raise ValueError(f"Cannot read entry, title missing:\n'{entry_text}'")
 
         body = "\n".join(body_lines) if body_lines else ""
-        body = re.sub(r"^##(#*) ", r"\g<1> ", body, flags=re.MULTILINE)
+        body = re.sub(r"^##(#+)", r"\g<1>", body, flags=re.MULTILINE)
 
         return Entry(date, title, body)
 
@@ -171,3 +171,8 @@ def create_file_journal(name: str) -> None:
 def read(journal_name: Optional[str] = None, last_n: Optional[int] = None) -> None:
     journal = Journal.from_name(journal_name)
     journal.pprint(last_n)
+
+
+def list_journals() -> None:
+    for journal in list(get_jpp_home().iterdir()):
+        print(f"{journal.stem} ({journal})")

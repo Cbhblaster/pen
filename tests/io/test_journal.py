@@ -18,11 +18,7 @@ serializers = Serializer.__subclasses__()
 
 @pytest.mark.parametrize("serializer_cls", serializers)
 @given(entry=st.builds(Entry, datetime_without_seconds(), title(), body()))
-@example(
-    Entry(
-        datetime(2000, 1, 1), "foo", "## needs escaping\n#### this too\nbut not this ##"
-    )
-)
+@example(Entry(datetime(2000, 1, 1), "foo", "## needs escaping\n#### this too\n###"))
 def test_serialization(serializer_cls: Type[Serializer], entry: Entry) -> None:
     serializer = serializer_cls()
     serialized = serializer.serialize([entry])

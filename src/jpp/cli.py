@@ -16,7 +16,7 @@ from .io.config import (
     get_config_path,
     user_editor,
 )
-from .io.journal import Journal, create_file_journal, read
+from .io.journal import Journal, create_file_journal, list_journals, read
 from .parsing import convert_to_dateparser_locale, parse_entry
 from .utils import ask, print_err, yes_no
 
@@ -230,6 +230,10 @@ def read_command(args: argparse.Namespace) -> None:
     read(args.journal, args.last_n)
 
 
+def list_command(_: argparse.Namespace) -> None:
+    list_journals()
+
+
 class DefaultSubcommandArgParser(argparse.ArgumentParser):
     """Argparser that allows setting a default subcommand.
     When the cli user omits the subcommand, the default one is executed automatically.
@@ -303,6 +307,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     compose_parser = subparsers.add_parser("compose")
     compose_parser.set_defaults(func=compose_command)
+
+    list_parser = subparsers.add_parser("list")
+    list_parser.set_defaults(func=list_command)
 
     read_parser = subparsers.add_parser("read")
     read_parser.set_defaults(func=read_command)
