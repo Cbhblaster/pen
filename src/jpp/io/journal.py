@@ -5,7 +5,7 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Type
 
 from .. import Entry
 from ..utils import print_err, yes_no
@@ -19,13 +19,33 @@ class SerializationError(Exception):
     pass
 
 
+_serializer_registry: Dict[str, Type["Serializer"]] = {}
+
+
 class Serializer(ABC):
-    file_ending = ""
+    """
+    Abstract base class for Journal Serializers. When subclassing, you must
+    specify the file_ending in the class definition like so:
+
+    >>> class TextSerializer(Serializer, file_ending = ".txt")
+    ...    pass
+    ...
+    >>> TextSerializer.file_ending
+    '.txt'
+    """
+
+    file_ending: str
+
+    def __init_subclass__(cls, file_ending: str, **kwargs: Any) -> None:
+        assert file_ending
+        cls.file_ending = file_ending
+        _serializer_registry[file_ending] = cls
+        super().__init_subclass__()
 
     def serialize(self, entries: Iterable[Entry]) -> str:
         """Converts entries to markdown compatible string ready to write to file.
         Expects entries to be sorted by date newest to oldest."""
-        entry_string = "\n\n\n".join(
+        entry_string = "\n\n".join(
             self._serialize_entry(entry) for entry in reversed(list(entries))
         )
 
@@ -59,9 +79,7 @@ class Serializer(ABC):
         pass
 
 
-class MarkdownSerializer(Serializer):
-    file_ending = ".md"
-
+class MarkdownSerializer(Serializer, file_ending=".md"):
     def _serialize_entry(self, entry: Entry) -> str:
         entry_date = entry.date.strftime(SERIALIZED_DATE_FORMAT)
         entry_string = f"## {entry_date} - {entry.title}"
@@ -121,7 +139,7 @@ class Journal:
             self._create()
 
     @classmethod
-    def from_name(cls, name: Optional[str]) -> "Journal":
+    def from_name(cls, name: Optional[str], file_ending: str = ".md") -> "Journal":
         home = get_jpp_home()
         name = name or app_config.get("default_journal")
         if not name:
@@ -129,10 +147,10 @@ class Journal:
                 "No journal specified and no default journal set in the config"
             )
 
-        journal_path = home / (name + ".md")
-        return cls(
-            journal_path, MarkdownSerializer()
-        )  # get serializer from index/filename
+        journal_path = home / (name + file_ending)
+        serializer_cls = _serializer_registry[file_ending]
+
+        return cls(journal_path, serializer_cls())  # get serializer from index/filename
 
     def add(self, entry: Entry) -> None:
         entries = list(reversed(self.read()))  # get entries sorted by date ascending
@@ -155,9 +173,9 @@ class Journal:
         entries = self.serializer.deserialize(journal_text)
         try:
             return list(itertools.islice(entries, last_n))
-        except ValueError as err:
-            raise SerializationError(
-                f"Journal at {self.path} could not be read."
+        except SerializationError as err:
+            raise ValueError(
+                f"Journal {self.name} at {self.path} could not be read."
                 f" Did you modify it by hand?",
             ) from err
 
