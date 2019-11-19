@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -248,6 +249,13 @@ class DefaultSubcommandArgParser(argparse.ArgumentParser):
     def _parse_known_args(
         self, arg_strings: List[str], namespace: argparse.Namespace
     ) -> Tuple[argparse.Namespace, List[str]]:
+        # replace "-3" with "-n 3"
+        for i, arg in enumerate(arg_strings):
+            match = re.fullmatch(r"-(\d+)", arg)
+            if match:
+                arg_strings[i : i + 1] = ["-n", match[1]]
+                break
+
         if not self._subparsers:
             return super()._parse_known_args(arg_strings, namespace)
 
