@@ -11,6 +11,8 @@ def datetime_without_seconds(draw: Callable) -> datetime:
     return dt.replace(second=0, microsecond=0)
 
 
+# we are not really testing dateparser features here, so we can just use a small
+# static list for these
 valid_datetime_strings = st.sampled_from(
     ["today: ", "yesterday 5:30pm: ", "15th May 2019: ", "2099-09-09 9am: ", ""]
 )
