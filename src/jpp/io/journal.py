@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Type
 
 from .. import Entry
-from ..utils import print_err, yes_no
+from ..utils import open_editor, print_err, yes_no
 from .config import app_config, get_jpp_home
 
 
@@ -133,7 +133,7 @@ class Journal:
         if not path.exists():
             print_err(f"Journal '{self.name}' does not exist at path {self.path}")
             if not yes_no("Do you want to create it", default=True):
-                sys.exit(1)
+                sys.exit(0)
             print_err()
 
             self._create()
@@ -159,9 +159,7 @@ class Journal:
         # reverse the list above)
         bisect.insort(entries, entry)
 
-        with self.path.open("w") as fp:
-            # reverse it again before writing to get it in the same order
-            fp.write(self.serializer.serialize(reversed(entries)))
+        self.write(reversed(entries))
 
     def read(self, last_n: Optional[int] = None) -> List[Entry]:
         """Reads journal from disk and returns the *last_n* entries, ordered by
@@ -179,8 +177,52 @@ class Journal:
                 f" Did you modify it by hand?",
             ) from err
 
+    def write(self, entries: Iterable[Entry]) -> None:
+        with self.path.open("w") as fp:
+            # reverse it again before writing to get it in the same order
+            fp.write(self.serializer.serialize(entries))
+
+    def edit(self, last_n: Optional[int]) -> None:
+        entries = list(self.read())
+        to_edit = entries[:last_n]
+        to_edit_sting = self.serializer.serialize(to_edit)
+        edited_string = open_editor(to_edit_sting)
+        edited = list(self.serializer.deserialize(edited_string))
+
+        num_deleted = len(to_edit) - len(edited)
+        if num_deleted > 0:
+            entry_entries = "entry" if num_deleted == 1 else "entries"
+            print_err(f"It looks like you deleted {num_deleted} {entry_entries}. Are")
+            print_err(f" you sure you want to continue?")
+            cont = yes_no("Continue", default=True)
+
+            if not cont:
+                sys.exit(0)
+
+        entries[:last_n] = edited
+        self.write(entries)
+
+    def delete(self, last_n: Optional[int] = None) -> None:
+        entries = list(self.read())
+
+        if not entries:
+            print_err(f"Cannot delete anything, journal '{self.name}' is empty")
+
+        keep = [
+            entry
+            for entry in entries[:last_n]
+            if not yes_no(f"Delete entry '{entry.date}: {entry.title}'", default=False)
+        ]
+
+        entries[:last_n] = keep
+
+        self.write(entries)
+
     def pprint(self, last_n: Optional[int] = None) -> None:
         entries = self.read(last_n)
+
+        if not entries:
+            print_err(f"Cannot read, journal '{self.name}' is empty")
 
         print(self.serializer.serialize(reversed(entries)))
 
@@ -188,7 +230,7 @@ class Journal:
         home = get_jpp_home()
         journal_path = home / (self.name + self.serializer.file_ending)
         journal_path.touch(0o700)
-        print_err(f"Created journal {self.name} at {self.path}")
+        print_err(f"Created journal '{self.name}' at {self.path}")
         print_err()
 
 
@@ -198,5 +240,15 @@ def read(journal_name: Optional[str] = None, last_n: Optional[int] = None) -> No
 
 
 def list_journals() -> None:
-    for journal in list(get_jpp_home().iterdir()):
+    for journal in get_jpp_home().iterdir():
         print(f"{journal.stem} ({journal})")
+
+
+def edit(journal_name: str, last_n: int) -> None:
+    journal = Journal.from_name(journal_name)
+    journal.edit(last_n)
+
+
+def delete(journal_name: str, last_n: int) -> None:
+    journal = Journal.from_name(journal_name)
+    journal.delete(last_n)

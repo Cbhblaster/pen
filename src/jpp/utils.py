@@ -1,7 +1,17 @@
 import functools
+import os
+import subprocess
 import sys
 from collections.abc import Mapping
+from tempfile import mkstemp
 from typing import Callable, List, Optional
+
+
+_no_editor_message = """\
+Editing journals or using custom prompts is not supported without
+an editor. jpp will try to fall back to nano, but this might fail. Please set
+up your preferred editor by setting the $VISUAL environment variable.
+"""
 
 
 def merge_dicts(d1: dict, d2: dict) -> None:
@@ -65,3 +75,38 @@ def input_err(prompt: str = "") -> str:
 
 
 print_err = functools.partial(print, file=sys.stderr)
+
+
+def open_editor(text: Optional[str] = None) -> str:
+    # todo importing here to avoid circular import. Should be changed if possible
+    from jpp.io.config import user_editor
+
+    editor = user_editor()
+
+    if text and not editor:
+        print_err(_no_editor_message)
+        editor = ["/bin/nano"]
+
+    if editor:
+        print_err("Opening your editor now. Save and close to compose your entry")
+        tmpfile_handle, tmpfile_path = mkstemp(suffix="-jpp.txt", text=True)
+
+        if text:
+            with open(tmpfile_path, "w") as fp:
+                fp.write(text)
+
+        subprocess.call(editor + [tmpfile_path])
+        os.close(tmpfile_handle)
+
+        with open(tmpfile_path, "r") as fp:
+            entry_string = fp.read()
+
+        os.remove(tmpfile_path)
+    else:
+        print_err(
+            "Composing a new entry, press ctrl+d to finish writing"
+            " (ctrl+c to cancel)"
+        )
+        entry_string = sys.stdin.read()
+
+    return entry_string

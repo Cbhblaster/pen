@@ -1,11 +1,9 @@
 import argparse
 import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
-from tempfile import mkstemp
 from typing import List, Optional, Sequence, Tuple
 
 from . import __version__
@@ -15,11 +13,10 @@ from .io.config import (
     app_config,
     env_locale,
     get_config_path,
-    user_editor,
 )
-from .io.journal import Journal, list_journals, read
+from .io.journal import Journal, delete, edit, list_journals, read
 from .parsing import convert_to_dateparser_locale, parse_entry
-from .utils import ask, print_err, yes_no
+from .utils import ask, open_editor, print_err, yes_no
 
 
 min_entry_length = 1
@@ -81,25 +78,9 @@ _divider = """
 
 
 def compose(journal_name: Optional[str]) -> None:
-    editor = user_editor()
     journal = Journal.from_name(journal_name)
 
-    if editor:
-        print_err("Opening your editor now. Save and close to compose your entry")
-        tmpfile_handle, tmpfile_path = mkstemp(suffix="-jpp.txt", text=True)
-        subprocess.call(editor + [tmpfile_path])
-        os.close(tmpfile_handle)
-
-        with open(tmpfile_path, "r") as fp:
-            entry_string = fp.read()
-
-        os.unlink(tmpfile_path)
-    else:
-        print_err(
-            "Composing a new entry, press ctrl+d to finish writing"
-            " (ctrl+c to cancel)"
-        )
-        entry_string = sys.stdin.read()
+    entry_string = open_editor()
 
     print_err()
 
@@ -225,12 +206,20 @@ def compose_command(args: argparse.Namespace) -> None:
     compose(args.journal)
 
 
+def edit_command(args: argparse.Namespace) -> None:
+    edit(args.journal, args.last_n)
+
+
 def read_command(args: argparse.Namespace) -> None:
     read(args.journal, args.last_n)
 
 
 def list_command(_: argparse.Namespace) -> None:
     list_journals()
+
+
+def delete_command(args: argparse.Namespace) -> None:
+    delete(args.journal, args.last_n)
 
 
 class DefaultSubcommandArgParser(argparse.ArgumentParser):
@@ -314,8 +303,32 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     compose_parser = subparsers.add_parser("compose")
     compose_parser.set_defaults(func=compose_command)
 
+    edit_parser = subparsers.add_parser("edit")
+    edit_parser.set_defaults(func=edit_command)
+    edit_parser.add_argument(
+        "-n",
+        dest="last_n",
+        default=None,
+        metavar="N",
+        type=int,
+        help="Only edit the last n entries. You can also use '-<num>'"
+        " instead of '-n <num>'",
+    )
+
     list_parser = subparsers.add_parser("list")
     list_parser.set_defaults(func=list_command)
+
+    delete_parser = subparsers.add_parser("delete")
+    delete_parser.set_defaults(func=delete_command)
+    delete_parser.add_argument(
+        "-n",
+        dest="last_n",
+        default=None,
+        metavar="N",
+        type=int,
+        help="Only delete the last n entries. You can also use '-<num>'"
+        " instead of '-n <num>'",
+    )
 
     read_parser = subparsers.add_parser("read")
     read_parser.set_defaults(func=read_command)
@@ -325,7 +338,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         default=None,
         metavar="N",
         type=int,
-        help="Shows the last n entries matching the filter.",
+        help="Shows the last n entries matching the filter. You can"
+        " also use '-<num>' instead of '-n <num>'",
     )
 
     parser.set_default_subparser("compose")
