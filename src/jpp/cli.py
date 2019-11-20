@@ -1,14 +1,14 @@
-import argparse
 import os
 import re
 import sys
 import time
+from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Set
 
 from . import __version__
 from .io.config import (
-    _DEFAULT_JPP_HOME,
+    DEFAULT_JPP_HOME,
     JPP_HOME_ENV,
     app_config,
     env_locale,
@@ -19,8 +19,11 @@ from .parsing import convert_to_dateparser_locale, parse_entry
 from .utils import ask, open_editor, print_err, yes_no
 
 
-min_entry_length = 1
-msg_delay = 0.3  # a bit of delay makes the walls of text a bit easier to follow
+_install_min_entry_length = 1
+_install_msg_delay = (
+    0.3  # a bit of delay makes the walls of text a bit easier to follow
+)
+_default_command = "compose"
 
 _welcome_message = """\
 ********** Welcome to jpp! **********
@@ -84,7 +87,7 @@ def compose(journal_name: Optional[str]) -> None:
 
     print_err()
 
-    if len(entry_string) < min_entry_length:
+    if len(entry_string) < _install_min_entry_length:
         print_err("Entry not saved. Did you type something?")
         sys.exit(1)
 
@@ -111,26 +114,26 @@ def install() -> None:
     journal_dir = os.getenv(JPP_HOME_ENV)
 
     print_err(_welcome_message)
-    time.sleep(msg_delay)
+    time.sleep(_install_msg_delay)
 
     print_err(_returning_prompt)
-    time.sleep(msg_delay)
+    time.sleep(_install_msg_delay)
     returning = yes_no("Sync existing journals", default=False)
     print_err(_divider)
-    time.sleep(msg_delay)
+    time.sleep(_install_msg_delay)
 
     if returning:
         git_sync = setup_sync()
     else:
         print_err(_sync_message)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         print_err(_sync_prompt)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         git_sync = yes_no("Activate git sync", default=True)
         print_err(_divider)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         if git_sync:
             from .gitsync import init
@@ -139,14 +142,14 @@ def install() -> None:
 
     if not journal_dir:
         print_err(_jpp_dir_returning_prompt if returning else _jpp_dir_prompt)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         journal_dir = ask(
-            "Where should we put your journals", default=str(_DEFAULT_JPP_HOME)
+            "Where should we put your journals", default=str(DEFAULT_JPP_HOME)
         )
         journal_dir = str(Path(journal_dir).expanduser().absolute())
         print_err(_divider)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         # todo check if journals already exist in journal_directory
 
@@ -155,13 +158,13 @@ def install() -> None:
         time_locale = locale_from_env
         print_err(_locale_message.format(time_locale))
         print_err(_divider)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
     else:
         date_options = ["DMY", "MDY", "YMD"]
         date_order = ask(
             "What is your preferred date ordering (for Day, Month, Year)", date_options
         )
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
         time_first_answer = ask(
             "Do you prefer to input the date or time first ('July 5th 9:30' or"
@@ -171,10 +174,10 @@ def install() -> None:
         )
         time_first = time_first_answer == "time"
         print_err(_divider)
-        time.sleep(msg_delay)
+        time.sleep(_install_msg_delay)
 
     print_err(_default_journal_message)
-    time.sleep(msg_delay)
+    time.sleep(_install_msg_delay)
 
     default_journal = ask(
         "How do you want to call your default journal",
@@ -182,7 +185,7 @@ def install() -> None:
         validator=lambda s: len(s) >= 1,
     )
     print_err(_divider)
-    time.sleep(msg_delay)
+    time.sleep(_install_msg_delay)
 
     app_config.set("default_journal", default_journal)
     app_config.set("journal_directory", journal_dir)
@@ -202,84 +205,46 @@ def install() -> None:
     input()
 
 
-def compose_command(args: argparse.Namespace) -> None:
+def compose_command(args: Namespace) -> None:
     compose(args.journal)
 
 
-def edit_command(args: argparse.Namespace) -> None:
+def edit_command(args: Namespace) -> None:
     edit(args.journal, args.last_n)
 
 
-def read_command(args: argparse.Namespace) -> None:
+def read_command(args: Namespace) -> None:
     read(args.journal, args.last_n)
 
 
-def list_command(_: argparse.Namespace) -> None:
+def list_command(_: Namespace) -> None:
     list_journals()
 
 
-def delete_command(args: argparse.Namespace) -> None:
+def delete_command(args: Namespace) -> None:
     delete(args.journal, args.last_n)
-
-
-class DefaultSubcommandArgParser(argparse.ArgumentParser):
-    """Argparser that allows setting a default subcommand.
-    When the cli user omits the subcommand, the default one is executed automatically.
-
-    Adapted from https://stackoverflow.com/a/37593636/5266392
-    """
-
-    _default_subparser = None
-
-    def set_default_subparser(self, name: str) -> None:
-        self._default_subparser = name
-
-    # noinspection PyProtectedMember
-    def _parse_known_args(
-        self, arg_strings: List[str], namespace: argparse.Namespace
-    ) -> Tuple[argparse.Namespace, List[str]]:
-        # replace "-3" with "-n 3"
-        for i, arg in enumerate(arg_strings):
-            match = re.fullmatch(r"-(\d+)", arg)
-            if match:
-                arg_strings[i : i + 1] = ["-n", match[1]]
-                break
-
-        if not self._subparsers:
-            return super()._parse_known_args(arg_strings, namespace)
-
-        default_sp = self._default_subparser
-        if default_sp is not None and not {"-h", "--help"}.intersection(
-            set(arg_strings)
-        ):
-
-            for x in self._subparsers._actions:
-                subparser_found = isinstance(x, argparse._SubParsersAction) and set(
-                    arg_strings[:2]
-                ).intersection(x._name_parser_map.keys())
-                if subparser_found:
-                    break
-            else:
-                if arg_strings:
-                    if arg_strings[0].startswith("-"):
-                        # if first argument is an option, add default arg
-                        # before that
-                        arg_strings = [default_sp] + arg_strings
-                    else:
-                        # if first argument is not an option, it's a journal name
-                        # insert default argument afterwards
-                        arg_strings.insert(1, default_sp)
-                else:
-                    arg_strings = [default_sp]
-        return super()._parse_known_args(arg_strings, namespace=namespace)
 
 
 def _is_installed() -> bool:
     return get_config_path().exists()
 
 
-def main(argv: Optional[Sequence[str]] = None) -> None:
-    parser = DefaultSubcommandArgParser(prog="jpp")
+def _prepare_args(argv: List[str], commands: Set[str]) -> List[str]:
+    for i, arg in enumerate(argv):
+        match = re.fullmatch(r"-(\d+)", arg)
+        if match:
+            argv[i : i + 1] = ["-n", match[1]]
+
+    # if user not asking for help or typing a specific command, add default command
+    if not ({"-h", "--help"}.intersection(argv) or commands.intersection(argv[0:1])):
+        argv = [_default_command] + argv
+
+    return argv
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    argv = argv or sys.argv[1:]
+    parser = ArgumentParser(prog="jpp", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument(
         "-V",
@@ -290,59 +255,62 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         help="Prints version information and exits",
     )
 
-    parser.add_argument(
+    journal_parser = ArgumentParser(add_help=False)
+    journal_parser.add_argument(
         "journal",
         default=None,
         type=str,
         nargs="?",
-        help="Journal you want to write to (default can be set in your jpp config)",
+        help="Journal you want to use (default can be set in your jpp config)",
     )
 
-    subparsers = parser.add_subparsers()
-
-    compose_parser = subparsers.add_parser("compose")
-    compose_parser.set_defaults(func=compose_command)
-
-    edit_parser = subparsers.add_parser("edit")
-    edit_parser.set_defaults(func=edit_command)
-    edit_parser.add_argument(
+    filter_parser = ArgumentParser(add_help=False)  # used as parent parser
+    filter_parser.add_argument(
         "-n",
         dest="last_n",
         default=None,
         metavar="N",
         type=int,
-        help="Only edit the last n entries. You can also use '-<num>'"
-        " instead of '-n <num>'",
+        help="Only use the <n> most recent entries. You can also use '-<num>'"
+        " instead of '-n <num>', for example '-6' is equivalent to '-n 6'.",
     )
+
+    _commands_description = """
+compose:   Create a new journal entry (default command)
+read:      Read from your journals
+edit:      Edit old entries
+delete:    Delete old entries (can't be undone!)
+list:      List journals you have created and their paths
+
+See 'jpp <command> --help' to read more about a specific command.
+"""
+
+    subparsers = parser.add_subparsers(
+        title="These are all the jpp commands available",
+        metavar="",
+        description=_commands_description,
+    )
+
+    compose_parser = subparsers.add_parser("compose", parents=[journal_parser])
+    compose_parser.set_defaults(func=compose_command)
+
+    edit_parser = subparsers.add_parser("edit", parents=[journal_parser, filter_parser])
+    edit_parser.set_defaults(func=edit_command)
 
     list_parser = subparsers.add_parser("list")
     list_parser.set_defaults(func=list_command)
 
-    delete_parser = subparsers.add_parser("delete")
+    delete_parser = subparsers.add_parser(
+        "delete", parents=[journal_parser, filter_parser]
+    )
     delete_parser.set_defaults(func=delete_command)
-    delete_parser.add_argument(
-        "-n",
-        dest="last_n",
-        default=None,
-        metavar="N",
-        type=int,
-        help="Only delete the last n entries. You can also use '-<num>'"
-        " instead of '-n <num>'",
-    )
 
-    read_parser = subparsers.add_parser("read")
+    read_parser = subparsers.add_parser("read", parents=[journal_parser, filter_parser])
     read_parser.set_defaults(func=read_command)
-    read_parser.add_argument(
-        "-n",
-        dest="last_n",
-        default=None,
-        metavar="N",
-        type=int,
-        help="Shows the last n entries matching the filter. You can"
-        " also use '-<num>' instead of '-n <num>'",
-    )
 
-    parser.set_default_subparser("compose")
+    commands = set(subparsers.choices.keys())
+    argv = _prepare_args(argv, commands)
+
     parsed_args = parser.parse_args(argv)
 
     if not _is_installed():

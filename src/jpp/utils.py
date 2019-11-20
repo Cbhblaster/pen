@@ -79,7 +79,7 @@ print_err = functools.partial(print, file=sys.stderr)
 
 def open_editor(text: Optional[str] = None) -> str:
     # todo importing here to avoid circular import. Should be changed if possible
-    from jpp.io.config import user_editor
+    from .io.config import user_editor
 
     editor = user_editor()
 
