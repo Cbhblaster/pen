@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Type
 
 from .. import Entry
 from ..utils import open_editor, print_err, yes_no
-from .config import app_config, get_jpp_home
+from .config import app_config, get_pen_home
 
 
 SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
@@ -140,7 +140,7 @@ class Journal:
 
     @classmethod
     def from_name(cls, name: Optional[str], file_ending: str = ".md") -> "Journal":
-        home = get_jpp_home()
+        home = get_pen_home()
         name = name or app_config.get("default_journal")
         if not name:
             raise RuntimeError(
@@ -227,7 +227,7 @@ class Journal:
         print(self.serializer.serialize(reversed(entries)))
 
     def _create(self) -> None:
-        home = get_jpp_home()
+        home = get_pen_home()
         journal_path = home / (self.name + self.serializer.file_ending)
         journal_path.touch(0o700)
         print_err(f"Created journal '{self.name}' at {self.path}")
@@ -240,7 +240,7 @@ def read(journal_name: Optional[str] = None, last_n: Optional[int] = None) -> No
 
 
 def list_journals() -> None:
-    for journal in get_jpp_home().iterdir():
+    for journal in get_pen_home().iterdir():
         print(f"{journal.stem} ({journal})")
 
 

@@ -1,64 +1,76 @@
-# 📖 Journal++ aka *jpp*
+# 🖋️ Pen - your command line diary
 
-jpp is a modern Python journal application. It allows you to 
-quickly jot down your thoughts right from the command line. All your journals 
-will be stored as text, which means you can simply put them into cloud storage
-or put it on a USB flash drive and access it from anywhere, even without jpp. 
+Pen allows you to quickly jot down your thoughts right from the command line. 
+All your journals will be stored as text, which means you can simply put them into cloud storage
+or on a USB flash drive and access it from anywhere, even without pen itself. 
 It takes a lot of inspiration from [jrnl](https://github.com/jrnl-org/jrnl) and
-tries to create a similar interface that is just as easy to use, but jpp is 
+tries to create a similar interface that is just as easy to use, but Pen is 
 rewritten from the ground up in modern Python, aiming for a more stable 
-and reliable experience. Currently, jpp is still in an early stage, but some
+and enhanced experience. Currently, Pen is still in an early stage, but some
 nice additional features are planned. 
 
 ## Journaling
 Writing about your daily routine has been linked to therapeutic health benefits 
-like stress reduction[[1]](#1)[[2]](https://www.apa.org/monitor/jun02/writing).  
-It's not necessary to journal every single day, because it shouldn't be a 
+like stress reduction
+[[1]](#1) [[2]](https://www.apa.org/monitor/jun02/writing).
+For years, practitioners have used logs, questionnaires, journals and other
+writing forms to help people heal from stresses and traumas.
+It's not necessary to journal every single day, because it should not become a
 burden.
-Instead, write whenever you feel like it, when you feel stressed by something, 
-or when you just want to get something out of your mind but can't talk about it
-with someone right now. 
+However, when you feel like it would help get things off your mind, 
+when you feel stressed by something or when you just want to go through an 
+experience in your head again before forgetting too many details, writing it
+down can be a very relieving and helpful experience.
 
-You can even use your journal to track progress in your work, in the gym or 
+Pen is also great just as a simple note-keeping app. You could for example 
+create a journal called 'code' where you briefly describe the cool new library 
+you learnt about today so you can go back to it later, or to describe how you 
+solved a difficult programming problem.  
+
+You can also use Pen to track progress in your work, in the gym or 
 on the race track. Having a place to note your achievements, personal records 
-or maybe how much weight you lost over time is a great motivator, as you can
+or how much weight you lost over time is a great motivator, as you can
 always look back and see how fast you progressed.
 
 
-## Using jpp
+## Using Pen
 To make a new entry, just type:
 ```
-jpp
+pen
 ```
-If you haven't run jpp on this machine before, a short setup script will start, 
-asking about you preferences like which editor you want to use. `jpp` will 
+If you haven't run Pen on this machine before, a short setup dialog will start, 
+asking about your preferences like which editor you want to use. Pen will 
 always try to infer these settings from your environment variables and only ask
-when necessary. However, you can always change the jpp configuration which is
-by default located at `$HOME/.config/jpp`. You can, however, change this
-location by exporting the `JPP_HOME` environment variable before running 
-`jpp`. This is especially useful if you want to sync your work using Dropbox, 
-Google Cloud or a similar cloud storage. In this case, you need to export the 
-location of the synced directory. 
+when necessary. You can always change the way Pen behaves by changing its 
+configuration which is by default located at `$HOME/.config/pen`. You can also
+change the config file's location by exporting the `PEN_HOME` environment
+variable before running `pen`. This is especially useful if you want to sync
+your config using Dropbox, Google Cloud or a different cloud storage service.
 
 
 ## (Planned) Features
 
 Implemented features are marked with a ✔, planned features with a ❌.
+The list is ordered by their planned implementation order, but the order may
+change.
 
 | Feature | ? | Note |
 |---------|---|------|
 | Fully text based | ✔ | |
 | Multiple Journals | ✔ | |
+| Writing/Deleting/Editing entries | ✔ | |
 | Journals as single file | ✔ |  |
-| Tags | ❌ | |
-| Star entries (favourite) | ❌ | |
 | Filtering by date, tag, starred | ❌ | |
 | Fast Search | ❌ | |
+| Tags | ❌ | |
+| Star entries (favourite) | ❌ | |
+| Import from jrnl | ❌ | |
 | git sync | ❌ | Can still use cloud<br>(Dropbox, etc.) to sync|
-| Custom Prompts | ❌ | |
-| Store in different file formats | ❌ | implemented: .md |
+| Plugin System | ❌ | based on pluggy|
 | Journals as hierarchical directory | ❌ |  |
 | Encryption | ❌ | |
+| Custom Prompts | ❌ | |
+| Store in different file formats | ❌ | currently implemented:<br> Markdown |
 
 ## References
 

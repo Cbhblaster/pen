@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from jpp.utils import ask, yes_no
+from pen.utils import ask, yes_no
 
 
 @pytest.mark.parametrize(

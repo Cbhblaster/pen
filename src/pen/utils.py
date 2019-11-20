@@ -9,7 +9,7 @@ from typing import Callable, List, Optional
 
 _no_editor_message = """\
 Editing journals or using custom prompts is not supported without
-an editor. jpp will try to fall back to nano, but this might fail. Please set
+an editor. pen will try to fall back to nano, but this might fail. Please set
 up your preferred editor by setting the $VISUAL environment variable.
 """
 
@@ -89,7 +89,7 @@ def open_editor(text: Optional[str] = None) -> str:
 
     if editor:
         print_err("Opening your editor now. Save and close to compose your entry")
-        tmpfile_handle, tmpfile_path = mkstemp(suffix="-jpp.txt", text=True)
+        tmpfile_handle, tmpfile_path = mkstemp(suffix="-pen.txt", text=True)
 
         if text:
             with open(tmpfile_path, "w") as fp:

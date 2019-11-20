@@ -8,8 +8,8 @@ from typing import List, Optional, Set
 
 from . import __version__
 from .io.config import (
-    DEFAULT_JPP_HOME,
-    JPP_HOME_ENV,
+    DEFAULT_PEN_HOME,
+    PEN_HOME_ENV,
     app_config,
     env_locale,
     get_config_path,
@@ -26,19 +26,19 @@ _install_msg_delay = (
 _default_command = "compose"
 
 _welcome_message = """\
-********** Welcome to jpp! **********
-It looks like you haven't used jpp before (at least on this machine). Before you
+********** Welcome to pen! **********
+It looks like you haven't used pen before (at least on this machine). Before you
 start jotting down your thoughts, please allow me to ask a few questions on how
-to set up jpp.
+to set up pen.
 """
 
 _returning_prompt = """\
-Have you used jpp before and want to sync your existing journals to this machine
-or are you a new jpp user?
+Have you used pen before and want to sync your existing journals to this machine
+or are you a new pen user?
 """
 
 _sync_message = """\
-There's two ways you can backup and sync jpp journals and settings
+There's two ways you can backup and sync pen journals and settings
 across your devices: either put the journals in a directory synced by your
 preferred cloud storage (Dropbox, Google Cloud...) or by activating git sync.
 The latter keeps a full history of all your changes, which might come in handy.
@@ -47,25 +47,25 @@ The latter keeps a full history of all your changes, which might come in handy.
 _sync_prompt = """\
 Do you want to activate git sync? Git sync will automatically commit changes to
 your journals. This can be used only locally, or you can add a remote repository
-(for example on GitHub) to let jpp automatically sync from there.
+(for example on GitHub) to let pen automatically sync from there.
 """
 
-_jpp_dir_prompt = """\
+_pen_dir_prompt = """\
 In what directory do you want to store your journals? Note that this directory
 can be shared across devices, for example by syncing it using Dropbox. If you've
-used jpp before and synced your journals to this machine already, enter the path
+used pen before and synced your journals to this machine already, enter the path
 to where you put them.
 """
 
-_jpp_dir_returning_prompt = """\
+_pen_dir_returning_prompt = """\
 Enter the path to where you put your journals (e.g. your Dropbox directory) so
-that jpp can find them again.
+that pen can find them again.
 """
 
 _locale_message = """\
-jpp is using the system locale settings ({}) for date parsing and formatting.
+pen is using the system locale settings ({}) for date parsing and formatting.
 You can still change your preferred date format later by either changing the
-'LC_TIME' environment variable or setting one of the date settings in the jpp
+'LC_TIME' environment variable or setting one of the date settings in the pen
 configuration.
 """
 
@@ -111,7 +111,7 @@ def install() -> None:
     time_locale = ""
     date_order = ""
     time_first = None
-    journal_dir = os.getenv(JPP_HOME_ENV)
+    journal_dir = os.getenv(PEN_HOME_ENV)
 
     print_err(_welcome_message)
     time.sleep(_install_msg_delay)
@@ -141,11 +141,11 @@ def install() -> None:
             init()
 
     if not journal_dir:
-        print_err(_jpp_dir_returning_prompt if returning else _jpp_dir_prompt)
+        print_err(_pen_dir_returning_prompt if returning else _pen_dir_prompt)
         time.sleep(_install_msg_delay)
 
         journal_dir = ask(
-            "Where should we put your journals", default=str(DEFAULT_JPP_HOME)
+            "Where should we put your journals", default=str(DEFAULT_PEN_HOME)
         )
         journal_dir = str(Path(journal_dir).expanduser().absolute())
         print_err(_divider)
@@ -199,7 +199,7 @@ def install() -> None:
     if time_locale:
         app_config.set("locale", time_locale)
 
-    print_err("All done! You can now start using jpp!")
+    print_err("All done! You can now start using pen!")
     print_err("Hit enter to start writing your first entry...")
     print_err()
     input()
@@ -244,7 +244,7 @@ def _prepare_args(argv: List[str], commands: Set[str]) -> List[str]:
 
 def main(argv: Optional[List[str]] = None) -> None:
     argv = argv or sys.argv[1:]
-    parser = ArgumentParser(prog="jpp", formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(prog="pen", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument(
         "-V",
@@ -261,7 +261,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         default=None,
         type=str,
         nargs="?",
-        help="Journal you want to use (default can be set in your jpp config)",
+        help="Journal you want to use (default can be set in your pen config)",
     )
 
     filter_parser = ArgumentParser(add_help=False)  # used as parent parser
@@ -282,11 +282,11 @@ edit:      Edit old entries
 delete:    Delete old entries (can't be undone!)
 list:      List journals you have created and their paths
 
-See 'jpp <command> --help' to read more about a specific command.
+See 'pen <command> --help' to read more about a specific command.
 """
 
     subparsers = parser.add_subparsers(
-        title="These are all the jpp commands available",
+        title="These are all the pen commands available",
         metavar="",
         description=_commands_description,
     )

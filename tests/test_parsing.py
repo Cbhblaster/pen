@@ -4,7 +4,7 @@ from typing import Callable, Optional, Tuple
 import hypothesis.strategies as st
 from hypothesis import given
 
-from jpp.parsing import parse_entry
+from pen.parsing import parse_entry
 
 from .strategies import body, title, valid_datetime_strings
 

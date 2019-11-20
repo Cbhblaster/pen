@@ -6,8 +6,8 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import example, given
 
-from jpp import Entry
-from jpp.io.journal import SerializationError, Serializer
+from pen import Entry
+from pen.io.journal import SerializationError, Serializer
 
 from ..strategies import body, datetime_without_seconds, title
 from ..utils import dt_equals_in_minutes

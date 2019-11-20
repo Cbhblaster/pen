@@ -12,15 +12,15 @@ from ..utils import merge_dicts
 
 
 HOME = Path().home()
-JPP_HOME_ENV = "JPP_HOME"
-DEFAULT_CONFIG_PATH = HOME / ".config" / "jpp" / "jpp.toml"
-DEFAULT_JPP_HOME = HOME / ".local" / "jpp"
+PEN_HOME_ENV = "PEN_HOME"
+DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
+DEFAULT_PEN_HOME = HOME / ".local" / "pen"
 
 
 class _AppConfig:
     """
     Config class, abstracts reading and writing to file and adding, editing
-    or removing jpp settings.
+    or removing pen settings.
     """
 
     def __init__(self) -> None:
@@ -65,12 +65,12 @@ def get_config_path() -> Path:
 app_config = _AppConfig()  # todo: better way to handle configuration
 
 
-def get_jpp_home() -> Path:
+def get_pen_home() -> Path:
     # get from app config?
-    jpp_home_env = os.getenv(JPP_HOME_ENV)
-    jpp_home = Path(jpp_home_env) if jpp_home_env else DEFAULT_JPP_HOME
-    jpp_home.mkdir(parents=True, exist_ok=True)  # ensure exists
-    return jpp_home
+    pen_home_env = os.getenv(PEN_HOME_ENV)
+    pen_home = Path(pen_home_env) if pen_home_env else DEFAULT_PEN_HOME
+    pen_home.mkdir(parents=True, exist_ok=True)  # ensure exists
+    return pen_home
 
 
 def env_locale() -> Optional[str]:
