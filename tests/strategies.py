@@ -18,6 +18,7 @@ valid_datetime_strings = st.sampled_from(
 )
 
 punctuation = st.text(alphabet=["!", ".", "?"])
+whitespace = st.text(min_size=1, alphabet=[" ", "\t", "\n"])
 
 valid_title_text = st.text(
     min_size=1,

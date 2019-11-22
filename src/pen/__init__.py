@@ -1,11 +1,8 @@
-from datetime import datetime
-from typing import NamedTuple
+import pluggy
 
 
 __version__ = "0.1.0"
 
 
-class Entry(NamedTuple):
-    date: datetime
-    title: str
-    body: str
+# Marker to be imported and used in plugins (see pluggy documentation for details)
+hookimpl = pluggy.HookimplMarker("pen")

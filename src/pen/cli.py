@@ -2,24 +2,30 @@ import os
 import re
 import sys
 import time
+import warnings
 from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 from pathlib import Path
 from typing import List, Optional, Set
 
+import pluggy
+from pluggy import PluginManager
+
 from . import __version__
-from .io.config import (
+from .config import (
     DEFAULT_PEN_HOME,
     PEN_HOME_ENV,
+    AppConfig,
     app_config,
     env_locale,
     get_config_path,
 )
-from .io.journal import Journal, delete, edit, list_journals, read
-from .parsing import convert_to_dateparser_locale, parse_entry
-from .utils import ask, open_editor, print_err, yes_no
+from .hookspec import EntrySerializer
+from .journal import compose, delete, edit, list_journals, read
+from .parsing import convert_to_dateparser_locale
+from .serializing import MarkdownSerializer
+from .utils import ask, print_err, yes_no
 
 
-_install_min_entry_length = 1
 _install_msg_delay = (
     0.3  # a bit of delay makes the walls of text a bit easier to follow
 )
@@ -78,23 +84,7 @@ for your first one, though.
 _divider = """
 --------------------------------------------------------------------------------
 """
-
-
-def compose(journal_name: Optional[str]) -> None:
-    journal = Journal.from_name(journal_name)
-
-    entry_string = open_editor()
-
-    print_err()
-
-    if len(entry_string) < _install_min_entry_length:
-        print_err("Entry not saved. Did you type something?")
-        sys.exit(1)
-
-    entry = parse_entry(entry_string)
-    journal.add(entry)
-
-    print_err("Entry saved")
+hooks = None
 
 
 def setup_sync() -> bool:
@@ -205,24 +195,25 @@ def install() -> None:
     input()
 
 
-def compose_command(args: Namespace) -> None:
-    compose(args.journal)
+class PenApplication:
+    def __init__(self, config: AppConfig, pluginmanager: PluginManager):
+        self.config = config
+        self.pluginmanager = pluginmanager
 
+    def compose_command(self, args: Namespace) -> None:
+        compose(self.pluginmanager, args.journal)
 
-def edit_command(args: Namespace) -> None:
-    edit(args.journal, args.last_n)
+    def edit_command(self, args: Namespace) -> None:
+        edit(self.pluginmanager, args.journal, args.last_n)
 
+    def read_command(self, args: Namespace) -> None:
+        read(self.pluginmanager, args.journal, args.last_n)
 
-def read_command(args: Namespace) -> None:
-    read(args.journal, args.last_n)
+    def list_command(self, _: Namespace) -> None:
+        list_journals()
 
-
-def list_command(_: Namespace) -> None:
-    list_journals()
-
-
-def delete_command(args: Namespace) -> None:
-    delete(args.journal, args.last_n)
+    def delete_command(self, args: Namespace) -> None:
+        delete(self.pluginmanager, args.journal, args.last_n)
 
 
 def _is_installed() -> bool:
@@ -243,7 +234,18 @@ def _prepare_args(argv: List[str], commands: Set[str]) -> List[str]:
 
 
 def main(argv: Optional[List[str]] = None) -> None:
-    argv = argv or sys.argv[1:]
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+
+    pm = pluggy.PluginManager("pen")
+    pm.add_hookspecs(EntrySerializer)
+    pm.load_setuptools_entrypoints("pen")
+
+    pm.register(MarkdownSerializer(), f"serializer-{MarkdownSerializer.file_type}")
+
+    app = PenApplication(app_config, pm)
+
+    argv = argv if argv is not None else sys.argv[1:]
     parser = ArgumentParser(prog="pen", formatter_class=RawTextHelpFormatter)
 
     parser.add_argument(
@@ -292,21 +294,22 @@ See 'pen <command> --help' to read more about a specific command.
     )
 
     compose_parser = subparsers.add_parser("compose", parents=[journal_parser])
-    compose_parser.set_defaults(func=compose_command)
+    compose_parser.set_defaults(func=app.compose_command)
 
     edit_parser = subparsers.add_parser("edit", parents=[journal_parser, filter_parser])
-    edit_parser.set_defaults(func=edit_command)
+    edit_parser.set_defaults(func=app.edit_command)
 
     list_parser = subparsers.add_parser("list")
-    list_parser.set_defaults(func=list_command)
+    list_parser.set_defaults(func=app.list_command)
 
     delete_parser = subparsers.add_parser(
         "delete", parents=[journal_parser, filter_parser]
     )
-    delete_parser.set_defaults(func=delete_command)
+    delete_parser.set_defaults(func=app.delete_command)
 
     read_parser = subparsers.add_parser("read", parents=[journal_parser, filter_parser])
-    read_parser.set_defaults(func=read_command)
+    read_parser.set_defaults(func=app.read_command)
+    # todo --title/--short/--oneline
 
     commands = set(subparsers.choices.keys())
     argv = _prepare_args(argv, commands)

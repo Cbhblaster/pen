@@ -50,7 +50,7 @@ your config using Dropbox, Google Cloud or a different cloud storage service.
 
 ## (Planned) Features
 
-Implemented features are marked with a ✔, planned features with a ❌.
+Implemented features are marked with a ✔.
 The list is ordered by their planned implementation order, but the order may
 change.
 
@@ -60,17 +60,17 @@ change.
 | Multiple Journals | ✔ | |
 | Writing/Deleting/Editing entries | ✔ | |
 | Journals as single file | ✔ |  |
-| Filtering by date, tag, starred | ❌ | |
-| Fast Search | ❌ | |
-| Tags | ❌ | |
-| Star entries (favourite) | ❌ | |
-| Import from jrnl | ❌ | |
-| git sync | ❌ | Can still use cloud<br>(Dropbox, etc.) to sync|
-| Plugin System | ❌ | based on pluggy|
-| Journals as hierarchical directory | ❌ |  |
-| Encryption | ❌ | |
-| Custom Prompts | ❌ | |
-| Store in different file formats | ❌ | currently implemented:<br> Markdown |
+| Plugin System | WIP | based on [pluggy](https://github.com/pytest-dev/pluggy) |
+| Filtering by date, tag, starred |  | |
+| Fast Search |  | |
+| Tags |  | |
+| Star entries (favourite) |  | |
+| Import from jrnl |  | |
+| git sync |  | Can still use cloud<br>(Dropbox, etc.) to sync|
+| Journals as hierarchical directory |  |  |
+| Encryption |  | |
+| Custom Prompts |  | |
+| Store in different file formats |  | currently implemented:<br> Markdown |
 
 ## References
 

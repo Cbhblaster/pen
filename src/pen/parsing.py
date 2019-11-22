@@ -5,12 +5,12 @@ from typing import Optional
 import dateparser
 from dateparser import parse
 
-from . import Entry
-from .io.config import app_config, user_locale
+from .config import app_config, user_locale
+from .entry import Entry
 
 
 def parse_entry(text: str, date: Optional[datetime] = None) -> Entry:
-    sep = re.search(r"([?!.]+\s*\n?|\n)", text)
+    sep = re.search(r"([?!.]+\s+|\n)", text)
     title = text[: sep.end()].strip() if sep else text.strip()
     body = text[sep.end() :].strip() if sep else ""
 

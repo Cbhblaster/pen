@@ -8,7 +8,7 @@ from typing import Any, List, Optional
 from tomlkit.toml_document import TOMLDocument
 from tomlkit.toml_file import TOMLFile
 
-from ..utils import merge_dicts
+from .utils import merge_dicts
 
 
 HOME = Path().home()
@@ -17,7 +17,7 @@ DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
 DEFAULT_PEN_HOME = HOME / ".local" / "pen"
 
 
-class _AppConfig:
+class AppConfig:
     """
     Config class, abstracts reading and writing to file and adding, editing
     or removing pen settings.
@@ -62,7 +62,7 @@ def get_config_path() -> Path:
     return DEFAULT_CONFIG_PATH
 
 
-app_config = _AppConfig()  # todo: better way to handle configuration
+app_config = AppConfig()  # todo: better way to handle configuration
 
 
 def get_pen_home() -> Path:
