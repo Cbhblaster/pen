@@ -273,8 +273,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         default=None,
         metavar="N",
         type=int,
-        help="Only use the <n> most recent entries. You can also use '-<num>'"
-        " instead of '-n <num>', for example '-6' is equivalent to '-n 6'.",
+        help="Only use the <n> most recent entries. You can also use '-N'"
+        " instead of '-n N', for example '-6' is equivalent to '-n 6'.",
     )
 
     _commands_description = """

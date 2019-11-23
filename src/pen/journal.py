@@ -134,7 +134,10 @@ class Journal:
 
         if not entries:
             print_err(f"Cannot read, journal '{self.name}' is empty")
-
+        # move to separate printer function (that can be overriden)
+        # also consider locale specific format for date:
+        # try: format = locale.nl_langinfo(locale.D_T_FMT); except: pass
+        # print('{:>10}: {}'.format(name, time.strftime(format)))
         print(self.serializer.serialize(reversed(entries)))
 
     def _create(self) -> None:

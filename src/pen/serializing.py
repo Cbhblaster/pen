@@ -28,6 +28,7 @@ class JournalSerializer:
             raise SerializationError(
                 f"File type {file_type} not supported. You may"
                 f" need to install a plugin supporting this type."
+                f" Available types: {list(plugins.keys())}"
             )
 
         self.entry_serializer = plugins[serializer_name]
@@ -61,11 +62,12 @@ class JournalSerializer:
 
 class MarkdownSerializer(EntrySerializer):
     file_type = "pen-default-markdown"
+    entry_marker = "## "
 
     @hookimpl(trylast=True)
     def serialize_entry(self, entry: Entry) -> str:
         entry_date = entry.date.strftime(SERIALIZED_DATE_FORMAT)
-        entry_string = f"## {entry_date} - {entry.title}"
+        entry_string = f"{self.entry_marker}{entry_date} - {entry.title}"
         if entry.body:
             # we use '## ' to denote a new entry, so we need to escape occurrences
             # of '#' in the body at the start of lines by adding two more '#'
@@ -77,7 +79,9 @@ class MarkdownSerializer(EntrySerializer):
 
     @hookimpl(trylast=True)
     def split_entries(self, journal_text: str) -> List[str]:
-        entry_texts = re.split(r"^## ", journal_text, flags=re.MULTILINE)
+        entry_texts = re.split(
+            fr"^{self.entry_marker}", journal_text, flags=re.MULTILINE
+        )
         entry_texts = entry_texts[1:]  # skip everything before the first entry
         # re-add the split-tokens we just removed
         entry_texts = ["## " + entry for entry in entry_texts]
@@ -86,9 +90,9 @@ class MarkdownSerializer(EntrySerializer):
 
     @hookimpl(trylast=True)
     def deserialize_entry(self, entry_text: str) -> Entry:
-        if not entry_text[:3] == "## ":
+        if not entry_text[:3] == self.entry_marker:
             raise SerializationError(
-                f"Cannot read entry, entry marker '## ' missing:\n"
+                f"Cannot read entry, entry marker '{self.entry_marker}' missing:\n"
                 f"Entry: '{entry_text}'"
             )
 
@@ -109,6 +113,7 @@ class MarkdownSerializer(EntrySerializer):
             )
 
         body = "\n".join(body_lines)
+        # unescape markdown titles
         body = re.sub(r"^##(#+)", r"\g<1>", body, flags=re.MULTILINE)
 
         return Entry(date, title, body)
