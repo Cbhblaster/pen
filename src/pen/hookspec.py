@@ -7,14 +7,21 @@ from .entry import Entry
 
 
 if TYPE_CHECKING:
-    from .config import ArgParser
+    from .config import ArgParser, AppConfig
 
 
 hookspec = pluggy.HookspecMarker("pen")
+
+hookimpl = pluggy.HookimplMarker("pen")
 """Marker to be imported and used in plugins (see pluggy documentation for details)"""
 
 
 class EntrySerializer:
+    """Plugin spec for a Entry Serializer. A plugin implementing these methods
+    *must* be given a name that starts with `pen.SERIALIZER_PREFIX`, otherwise
+    pen will not pick up on it.
+    """
+
     @hookspec(firstresult=True)
     def serialize_entry(self, entry: Entry) -> str:
         """
@@ -61,22 +68,23 @@ class JournalFormatter:
 
 @hookspec  # todo spec
 def get_env_options() -> List[Tuple[str, Any]]:
-    """"""
+    """todo"""
 
 
 @hookspec  # todo spec
 def prepare_args(args: List[str], parser: "ArgParser") -> None:
-    """"""
+    """todo"""
 
 
 @hookspec  # todo spec
 def add_global_options(parser: "ArgParser") -> None:
-    """"""
+    """todo"""
 
 
 @hookspec  # todo spec
-def add_subparser(subparsers: _SubParsersAction) -> None:
-    """"""
+def add_subparser(early_config: "AppConfig", subparsers: _SubParsersAction) -> None:
+    """todo
 
-
-hookimpl = pluggy.HookimplMarker("pen")
+    :param early_config: AppConfig before argparsing
+    :param subparsers: The object returned by argparse.ArgumentParser.get_subparsers()
+    """

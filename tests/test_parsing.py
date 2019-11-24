@@ -28,12 +28,12 @@ def user_text(draw: Callable) -> Tuple[str, str, str]:
 @example(user_input=("", "decimal dot 2.718 no problem\n", ""), date=None)
 @example(user_input=("", ":_: colon first char! ", "body"), date=None)
 def test_parse_entry(
-    config: AppConfig, user_input: Tuple[str, str, str], date: Optional[datetime]
+    empty_config: AppConfig, user_input: Tuple[str, str, str], date: Optional[datetime]
 ) -> None:
     dt_text, title_text, body_text = user_input
     text = dt_text + title_text + body_text
 
-    entry = parse_entry(config, text, date)
+    entry = parse_entry(empty_config, text, date)
 
     assert body_text.strip() == entry.body
 

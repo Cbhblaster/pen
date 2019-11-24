@@ -5,10 +5,12 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List, Optional
 
+from pen.exceptions import UsageError
+
 from .entry import Entry
 from .hookspec import hookimpl
-from .serializing import JournalSerializer, MarkdownSerializer, SerializationError
-from .utils import open_editor, print_err, yes_no
+from .serializing import JournalSerializer, MarkdownSerializer
+from .utils import get_pager, open_editor, print_err, yes_no
 
 
 if TYPE_CHECKING:
@@ -16,11 +18,23 @@ if TYPE_CHECKING:
 
 
 _file_has_no_type_msg = """\
-Cannot read journal at {path}.
+Cannot read journal at {}.
 The file type cannot be determined from the file. Try to import the journal
 first using 'pen import <path>'. You might also need to install a plugin first
-to add support for your format. Consult the documentation or ask for help on
+to add support for this format. Consult the documentation or ask for help on
 the issue tracker."""
+
+
+def file_type_from_path(path: Path) -> str:
+    with path.open("r") as fp:
+        line = fp.readline()
+
+    file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
+
+    if file_type:
+        return file_type.group(1)
+
+    raise UsageError(_file_has_no_type_msg.format(path))
 
 
 class Journal:
@@ -28,31 +42,35 @@ class Journal:
         self.path = path
         self.name = path.stem
         self.config = config
-        self.file_type = file_type or self._get_file_type(path)
+        self.file_type = file_type or file_type_from_path(path)
         self.serializer = JournalSerializer(config.pluginmanager, self.file_type)
-
-        if not path.exists():
-            print_err(f"Journal '{self.name}' does not exist at path {self.path}")
-            if not yes_no("Do you want to create it", default=True):
-                sys.exit(0)
-            print_err()
-
-            self._create()
 
     @classmethod
     def from_name(cls, name: Optional[str], config: "AppConfig") -> "Journal":
         home = config.get("journal_directory")
         name = name or config.get("default_journal")
         if not name:
-            raise RuntimeError(
+            raise UsageError(
                 "No journal specified and no default journal set in the config"
             )
 
-        # todo journal registry/index file?
+        # todo hook based collection system
+        default_path = home / (name + ".txt")
         paths = [path for path in home.iterdir() if path.stem == name]
 
         assert len(paths) <= 1
-        journal_path = home / (name + ".md")
+        journal_path = paths[0] if paths else None
+        journal_path = journal_path or Path(
+            config.get(f"journals.{name}.path", default_path)
+        )
+
+        if not journal_path.exists():
+            print_err(f"Journal '{name}' does not exist at path {journal_path}")
+            if not yes_no("Do you want to create it", default=True):
+                sys.exit(0)
+            print_err()
+
+            cls.create(config, name, journal_path)
 
         return cls(journal_path, config, None)
 
@@ -76,10 +94,10 @@ class Journal:
         entries = self.serializer.deserialize(journal_text)
         try:
             return list(itertools.islice(entries, last_n))
-        except SerializationError as err:
-            raise SerializationError(
-                f"Journal {self.name} at {self.path} could not be read.\n"
-                f"Try running 'pen import {self.path}'.",
+        except Exception as err:
+            raise UsageError(
+                f"Journal {self.name} at {self.path} could not be read."
+                f" Try running 'pen import {self.path}'.",
             ) from err
 
     def write(self, entries: Iterable[Entry]) -> None:
@@ -90,6 +108,11 @@ class Journal:
     def edit(self, last_n: Optional[int]) -> None:
         entries = list(self.read())
         to_edit = entries[:last_n]
+        if not to_edit:
+            raise UsageError(
+                f"Cannot edit anything, no entries were found in journal '{self.name}'."
+            )
+
         to_edit_sting = self.serializer.serialize(to_edit)
         edited_string = open_editor(self.config, to_edit_sting)
         edited = list(self.serializer.deserialize(edited_string))
@@ -128,27 +151,28 @@ class Journal:
         entries = self.read(last_n)
 
         if not entries:
-            print_err(f"Cannot read, journal '{self.name}' is empty")
+            raise UsageError(
+                f"Cannot read journal '{self.name}'. Journal is empty (or corrupt)"
+            )
 
-        print(self.config.pluginmanager.hook.format_journal(entries=entries))
+        pager = get_pager(self.config)
+        pager(self.config.pluginmanager.hook.format_journal(entries=entries))
 
-    def _create(self) -> None:
-        home = self.config.get("journal_directory")
-        journal_path = home / (self.name + ".txt")
+    @staticmethod
+    def create(config: "AppConfig", name: str, path: Path) -> "Journal":
+        home = config.get("journal_directory")
+        journal_path = home / (name + ".txt")
         journal_path.touch(0o700)
-        print_err(f"Created journal '{self.name}' at {self.path}")
+        # todo don't hardcode default
+        file_type = config.get("default_file_type", default="default-pen-markdown")
+
+        with journal_path.open("w") as fp:
+            fp.write(f"file_type: {file_type}\n")
+
+        print_err(f"Created journal '{name}' at {path}")
         print_err()
 
-    def _get_file_type(self, path: Path) -> str:
-        with path.open("r") as fp:
-            line = fp.readline()
-
-        file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
-
-        if file_type:
-            return file_type.group(1)
-
-        raise SerializationError(_file_has_no_type_msg.format(path=path))
+        return Journal(path, config, file_type)
 
 
 class MarkdownPrinter:

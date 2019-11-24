@@ -60,17 +60,17 @@ change.
 | Multiple Journals | ✔ | |
 | Writing/Deleting/Editing entries | ✔ | |
 | Journals as single file | ✔ |  |
-| Plugin System | WIP | based on [pluggy](https://github.com/pytest-dev/pluggy) |
+| Plugin System | ✔ | (partially done)<br>based on [pluggy](https://github.com/pytest-dev/pluggy) |
+| Import from jrnl |  | |
 | Filtering by date, tag, starred |  | |
 | Fast Search |  | |
 | Tags |  | |
 | Star entries (favourite) |  | |
-| Import from jrnl |  | |
 | git sync |  | Can still use cloud<br>(Dropbox, etc.) to sync|
 | Journals as hierarchical directory |  |  |
 | Encryption |  | |
 | Custom Prompts |  | |
-| Store in different file formats |  | currently implemented:<br> Markdown |
+| Store in custom file formats | ✔ (1) | plugins can extend this!<br>currently implemented:<br> Markdown, jrnl |
 
 ## References
 

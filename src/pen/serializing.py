@@ -9,6 +9,7 @@ from .hookspec import EntrySerializer, hookimpl
 
 
 SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
+SERIALIZER_PREFIX = "serializer-"
 
 
 class SerializationError(Exception):
@@ -20,14 +21,19 @@ class JournalSerializer:
 
     def __init__(self, pluginmanager: PluginManager, file_type: str) -> None:
         self.file_type = file_type
-        serializer_name = f"serializer-{self.file_type}"
+        serializer_name = f"{SERIALIZER_PREFIX}{self.file_type}"
         plugins = dict(pluginmanager.list_name_plugin())
 
         if serializer_name not in plugins:
+            serializers = list(
+                plugin
+                for plugin in plugins.keys()
+                if plugin.startswith(SERIALIZER_PREFIX)
+            )
             raise SerializationError(
                 f"File type {file_type} not supported. You may"
                 f" need to install a plugin supporting this type."
-                f" Available types: {list(plugins.keys())}"
+                f" Available types: {serializers}"
             )
 
         self.entry_serializer = plugins[serializer_name]
@@ -51,6 +57,7 @@ class JournalSerializer:
 
         journal_text = journal_text.strip()
         entry_texts = self.entry_serializer.split_entries(journal_text=journal_text)
+
         # lazy evaluation, only deserialize the entries that are actually needed
         entries = (
             self.entry_serializer.deserialize_entry(entry_text=entry_text)
@@ -119,3 +126,13 @@ class MarkdownSerializer(EntrySerializer):
         body = re.sub(r"^##(#+)", r"\g<1>", body, flags=re.MULTILINE)
 
         return Entry(date, title, body)
+
+
+def available_serializers(pm: PluginManager) -> List[str]:
+    plugins = dict(pm.list_name_plugin())
+    supported_file_types = [
+        name[len(SERIALIZER_PREFIX) :]
+        for name in plugins
+        if name.startswith(SERIALIZER_PREFIX)
+    ]
+    return supported_file_types

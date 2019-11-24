@@ -1,10 +1,10 @@
-import functools
 import os
 import subprocess
 import sys
 from collections.abc import Mapping
 from tempfile import mkstemp
-from typing import TYPE_CHECKING, Callable, List, Optional
+from textwrap import wrap
+from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ def ask(
 
     def validate(answ: str) -> bool:
         if options:
-            return answ in options
+            return answ in options or answ == default
 
         return validator(answ) if validator else True
 
@@ -78,7 +78,13 @@ def input_err(prompt: str = "") -> str:
     return input()
 
 
-print_err = functools.partial(print, file=sys.stderr)
+def print_err(*args: Any, sep: str = " ", **kwargs: Any) -> None:
+    text = sep.join([str(arg) for arg in args])
+    print(
+        "\n".join(wrap(text, width=88, drop_whitespace=False)),
+        file=sys.stderr,
+        **kwargs,
+    )
 
 
 def open_editor(config: "AppConfig", text: Optional[str] = None) -> str:
@@ -89,7 +95,7 @@ def open_editor(config: "AppConfig", text: Optional[str] = None) -> str:
         editor = ["/bin/nano"]
 
     if editor:
-        print_err("Opening your editor now. Save and close to compose your entry")
+        print_err("Opening your editor now. Save and close when you are done")
         tmpfile_handle, tmpfile_path = mkstemp(suffix="-pen.txt", text=True)
 
         if text:
@@ -111,3 +117,13 @@ def open_editor(config: "AppConfig", text: Optional[str] = None) -> str:
         entry_string = sys.stdin.read()
 
     return entry_string
+
+
+def get_pager(_: "AppConfig") -> Callable[[str], None]:
+    """
+    Decide what method to use for paging through text.
+    todo: take pager from config?
+    """
+    import pydoc
+
+    return pydoc.getpager()

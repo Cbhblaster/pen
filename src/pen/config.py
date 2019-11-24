@@ -1,17 +1,11 @@
 import itertools
 import locale
 import os
-import re
 import shlex
 import sys
-from argparse import (
-    ArgumentParser,
-    Namespace,
-    RawDescriptionHelpFormatter,
-    _SubParsersAction,
-)
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import pluggy
 import tomlkit
@@ -19,15 +13,9 @@ from pluggy import PluginManager
 from tomlkit.toml_document import TOMLDocument
 
 import pen
+from pen.exceptions import UsageError
 
-from ._version import __version__
-from .commands import (
-    compose_command,
-    delete_command,
-    edit_command,
-    list_command,
-    read_command,
-)
+from . import commands
 from .hookspec import hookimpl
 from .journal import MarkdownPrinter
 from .serializing import MarkdownSerializer
@@ -66,8 +54,8 @@ class ArgParser:
     def parse(self, args: List[str]) -> Namespace:
         return self._parser.parse_args(args)
 
-    def add_subparsers(self, hook: Any) -> None:
-        hook.add_subparser(subparsers=self._subparsers)
+    def add_subparsers(self, config: "AppConfig", hook: Any) -> None:
+        hook.add_subparser(early_config=config, subparsers=self._subparsers)
 
     def add_argument(self, *args: Any, **kwargs: Any) -> None:
         """ Adds an argument to the command line parser. This takes the
@@ -122,20 +110,14 @@ class AppConfig:
     Does not allow saving new configuration to file currently.
     """
 
-    def __init__(self, argv: Namespace, pluginmanager: PluginManager) -> None:
-        self.cli_args = argv
+    def __init__(self, args: List[str], pluginmanager: PluginManager) -> None:
         self.pluginmanager = pluginmanager
         self.pluginmanager.register(self)
-        self.parser = ArgParser()
+
         self._config: Dict[str, Any] = {"pen": {}}
         self._config_file = ConfigFile(_config_path())
         if self._config_file.exists():
-            content = self._config_file.read()
-            if "pen" not in content:
-                raise RuntimeError(
-                    "Config file invalid, no top level 'pen' table found"
-                )
-
+            content = self.load()
             merge_dicts(self._config, content)
 
         env_options = self.pluginmanager.hook.get_env_options()
@@ -143,13 +125,20 @@ class AppConfig:
             if not self.get(option):
                 self.set(option, value)
 
+        self.parser = ArgParser()
+        self.parser.add_subparsers(self, self.pluginmanager.hook)
+        self.pluginmanager.hook.add_global_options(parser=self.parser)
+        self.pluginmanager.hook.prepare_args(args=args, parser=self.parser)
+        parsed_args = self.parser.parse(args)
+        self.cli_args = parsed_args
+
     def config_file_exists(self) -> bool:
         return self._config_file.exists()
 
     def home_directory_exists(self) -> bool:
         return Path(self.get("journal_directory")).exists()
 
-    def get(self, key: str, default: Optional[str] = None) -> Any:
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
         keys = key.split(".")
         config = self._config["pen"]
 
@@ -159,7 +148,7 @@ class AppConfig:
 
             config = config[key]
 
-        return config.get(key, default)
+        return config.get(keys[-1], default)
 
     def set(self, key: str, value: Any) -> None:
         """
@@ -180,6 +169,17 @@ class AppConfig:
     def save(self, config: TOMLDocument) -> None:
         self._config_file.write(config)
 
+    def load(self) -> TOMLDocument:
+        content = self._config_file.read()
+        if "pen" not in content:
+            raise UsageError(
+                f"Config file at {self._config_file._path} is invalid,"
+                " no top level 'pen' table found. Please fix or remove"
+                " the file and try again."
+            )
+
+        return content
+
     def _create_file(self) -> None:
         self._config_file.create()
 
@@ -195,87 +195,9 @@ def get_env_options() -> List[Tuple[str, Any]]:
     return env_vars
 
 
-@hookimpl
-def prepare_args(args: List[str], parser: ArgParser) -> None:
-    for i, arg in enumerate(args):
-        match = re.fullmatch(r"-(\d+)", arg)
-        if match:
-            args[i : i + 1] = ["-n", match[1]]
-
-    # if no command given and no help sought, infer command from the other args
-    if not (
-        {"-h", "--help"}.intersection(args) or parser.commands.intersection(args[0:1])
-    ):
-        # good enough solution for now. Will not work if 'compose' ever gets options
-        if any(arg.startswith("-") for arg in args):
-            args.insert(0, "read")
-        else:
-            args.insert(0, "compose")
-
-
-@hookimpl
-def add_global_options(parser: ArgParser) -> None:
-    parser.add_argument(
-        "-V",
-        "--version",
-        dest="version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help="Prints version information and exits",
-    )
-
-
-@hookimpl
-def add_subparser(subparsers: _SubParsersAction) -> None:
-    journal_parser = ArgumentParser(add_help=False)
-    journal_parser.add_argument(
-        "journal",
-        default=None,
-        type=str,
-        nargs="?",
-        help="Journal you want to use (default can be set in your pen config)",
-    )
-
-    filter_parser = ArgumentParser(add_help=False)  # used as parent parser
-    filter_parser.add_argument(
-        "-n",
-        dest="last_n",
-        default=None,
-        metavar="N",
-        type=int,
-        help="Only use the <n> most recent entries. You can also use '-N'"
-        " instead of '-n N', for example '-6' is equivalent to '-n "
-        "6'.",
-    )
-
-    compose_parser = subparsers.add_parser("compose", parents=[journal_parser])
-    compose_parser.set_defaults(func=compose_command)
-
-    edit_parser = subparsers.add_parser("edit", parents=[journal_parser, filter_parser])
-    edit_parser.set_defaults(func=edit_command)
-
-    list_parser = subparsers.add_parser("list")
-    list_parser.set_defaults(func=list_command)
-
-    delete_parser = subparsers.add_parser(
-        "delete", parents=[journal_parser, filter_parser]
-    )  # todo --force
-    delete_parser.set_defaults(func=delete_command)
-
-    read_parser = subparsers.add_parser("read", parents=[journal_parser, filter_parser])
-    read_parser.set_defaults(func=read_command)  # todo --title/--short/--oneline
-
-
 def get_config(args: List[str], plugins: List[Tuple[Any, str]]) -> AppConfig:
-    parser = ArgParser()
     pm = _get_plugin_manager(plugins)
-    pm.hook.add_global_options(parser=parser)
-    parser.add_subparsers(pm.hook)
-
-    prepare_args(args, parser)
-    parsed_args = parser.parse(args)
-
-    config = AppConfig(parsed_args, pm)
+    config = AppConfig(args, pm)
     return config
 
 
@@ -307,7 +229,7 @@ def _env_editor() -> Optional[List[str]]:
     return shlex.split(editor, posix="win" not in sys.platform) if editor else None
 
 
-def _get_plugin_manager(plugins: List[Tuple[Any, str]]) -> pluggy.PluginManager:
+def _get_plugin_manager(plugins: Iterable[Tuple[Any, str]]) -> pluggy.PluginManager:
     pm = pluggy.PluginManager("pen")
     pm.add_hookspecs(pen.hookspec)
     pm.add_hookspecs(pen.hookspec.EntrySerializer)
@@ -315,7 +237,9 @@ def _get_plugin_manager(plugins: List[Tuple[Any, str]]) -> pluggy.PluginManager:
     pm.load_setuptools_entrypoints("pen")
 
     # hooks implemented in this file (yes it's ugly) todo change this
-    pm.register(__import__(__name__).config)  # type: ignore
+    pm.register(__import__(__package__).config)  # type: ignore
+    pm.register(pen)  # version option
+    pm.register(commands)  # subcommands
     pm.register(MarkdownPrinter(), f"printer-{MarkdownSerializer.file_type}")
     pm.register(MarkdownSerializer(), f"serializer-{MarkdownSerializer.file_type}")
 
