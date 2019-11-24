@@ -1,12 +1,11 @@
 import re
 from datetime import datetime
-from typing import Iterable, Iterator, List
+from typing import Iterator, List, Optional, Sequence
 
-from pen.hookspec import EntrySerializer
 from pluggy import PluginManager
 
-from . import hookimpl
 from .entry import Entry
+from .hookspec import EntrySerializer, hookimpl
 
 
 SERIALIZED_DATE_FORMAT = "%Y-%m-%d %H:%M"
@@ -33,12 +32,12 @@ class JournalSerializer:
 
         self.entry_serializer = plugins[serializer_name]
 
-    def serialize(self, entries: Iterable[Entry]) -> str:
+    def serialize(self, entries: Sequence[Entry]) -> str:
         """Converts entries to markdown compatible string ready to write to file.
         Expects entries to be sorted by date newest to oldest."""
         entry_string = "\n\n".join(
             self.entry_serializer.serialize_entry(entry=entry)
-            for entry in reversed(list(entries))
+            for entry in reversed(entries)
         )
 
         return entry_string
@@ -64,9 +63,12 @@ class MarkdownSerializer(EntrySerializer):
     file_type = "pen-default-markdown"
     entry_marker = "## "
 
+    def __init__(self, datetime_format: Optional[str] = None):
+        self.datetime_format = datetime_format or SERIALIZED_DATE_FORMAT
+
     @hookimpl(trylast=True)
     def serialize_entry(self, entry: Entry) -> str:
-        entry_date = entry.date.strftime(SERIALIZED_DATE_FORMAT)
+        entry_date = entry.date.strftime(self.datetime_format)
         entry_string = f"{self.entry_marker}{entry_date} - {entry.title}"
         if entry.body:
             # we use '## ' to denote a new entry, so we need to escape occurrences
@@ -101,7 +103,7 @@ class MarkdownSerializer(EntrySerializer):
 
         try:
             date_str, title = title_line.split(" - ", 1)
-            date = datetime.strptime(date_str, SERIALIZED_DATE_FORMAT)
+            date = datetime.strptime(date_str, self.datetime_format)
         except ValueError as err:
             raise SerializationError(
                 f"Cannot read entry, entry malformed:\nEntry: '{entry_text}'"

@@ -3,18 +3,17 @@ import itertools
 import re
 import sys
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
-from pluggy import PluginManager
-
-from .config import app_config, get_pen_home
 from .entry import Entry
-from .parsing import parse_entry
-from .serializing import JournalSerializer, SerializationError
+from .hookspec import hookimpl
+from .serializing import JournalSerializer, MarkdownSerializer, SerializationError
 from .utils import open_editor, print_err, yes_no
 
 
-_install_min_entry_length = 1
+if TYPE_CHECKING:
+    from .config import AppConfig
+
 
 _file_has_no_type_msg = """\
 Cannot read journal at {path}.
@@ -25,13 +24,12 @@ the issue tracker."""
 
 
 class Journal:
-    def __init__(
-        self, path: Path, pluginmanager: PluginManager, file_type: Optional[str]
-    ):
+    def __init__(self, path: Path, config: "AppConfig", file_type: Optional[str]):
         self.path = path
         self.name = path.stem
+        self.config = config
         self.file_type = file_type or self._get_file_type(path)
-        self.serializer = JournalSerializer(pluginmanager, self.file_type)
+        self.serializer = JournalSerializer(config.pluginmanager, self.file_type)
 
         if not path.exists():
             print_err(f"Journal '{self.name}' does not exist at path {self.path}")
@@ -42,9 +40,9 @@ class Journal:
             self._create()
 
     @classmethod
-    def from_name(cls, name: Optional[str], pluginmanager: PluginManager) -> "Journal":
-        home = get_pen_home()
-        name = name or app_config.get("default_journal")
+    def from_name(cls, name: Optional[str], config: "AppConfig") -> "Journal":
+        home = config.get("journal_directory")
+        name = name or config.get("default_journal")
         if not name:
             raise RuntimeError(
                 "No journal specified and no default journal set in the config"
@@ -56,9 +54,7 @@ class Journal:
         assert len(paths) <= 1
         journal_path = home / (name + ".md")
 
-        return cls(
-            journal_path, pluginmanager, None
-        )  # get serializer from index/filename
+        return cls(journal_path, config, None)
 
     def add(self, entry: Entry) -> None:
         entries = list(reversed(self.read()))  # get entries sorted by date ascending
@@ -89,14 +85,13 @@ class Journal:
     def write(self, entries: Iterable[Entry]) -> None:
         with self.path.open("w") as fp:
             fp.write(f"file_type: {self.file_type}\n")
-            # reverse it again before writing to get it in the same order
-            fp.write(self.serializer.serialize(entries))
+            fp.write(self.serializer.serialize(list(entries)))
 
     def edit(self, last_n: Optional[int]) -> None:
         entries = list(self.read())
         to_edit = entries[:last_n]
         to_edit_sting = self.serializer.serialize(to_edit)
-        edited_string = open_editor(to_edit_sting)
+        edited_string = open_editor(self.config, to_edit_sting)
         edited = list(self.serializer.deserialize(edited_string))
 
         num_deleted = len(to_edit) - len(edited)
@@ -134,15 +129,12 @@ class Journal:
 
         if not entries:
             print_err(f"Cannot read, journal '{self.name}' is empty")
-        # move to separate printer function (that can be overriden)
-        # also consider locale specific format for date:
-        # try: format = locale.nl_langinfo(locale.D_T_FMT); except: pass
-        # print('{:>10}: {}'.format(name, time.strftime(format)))
-        print(self.serializer.serialize(reversed(entries)))
+
+        print(self.config.pluginmanager.hook.format_journal(entries=entries))
 
     def _create(self) -> None:
-        home = get_pen_home()
-        journal_path = home / (self.name + ".md")
+        home = self.config.get("journal_directory")
+        journal_path = home / (self.name + ".txt")
         journal_path.touch(0o700)
         print_err(f"Created journal '{self.name}' at {self.path}")
         print_err()
@@ -151,7 +143,7 @@ class Journal:
         with path.open("r") as fp:
             line = fp.readline()
 
-        file_type = re.match(r"file_type:\s([\w\-_]*)", line)
+        file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
 
         if file_type:
             return file_type.group(1)
@@ -159,40 +151,27 @@ class Journal:
         raise SerializationError(_file_has_no_type_msg.format(path=path))
 
 
-def read(
-    pluginmanager: PluginManager, journal_name: Optional[str], last_n: Optional[int]
-) -> None:
-    journal = Journal.from_name(journal_name, pluginmanager)
-    journal.pprint(last_n)
+class MarkdownPrinter:
+    """Turns entries into printable string using MarkdownSerializer"""
 
+    @hookimpl
+    def format_journal(self, entries: List[Entry]) -> str:
+        import locale
 
-def list_journals() -> None:
-    for journal in get_pen_home().iterdir():
-        print(f"{journal.stem} ({journal})")
+        try:
+            locale.setlocale(locale.LC_ALL, "")  # todo only once at start
+            datetime_format = locale.nl_langinfo(locale.D_T_FMT) or None
 
+            if datetime_format:
+                datetime_format = re.sub(r"(\s?%Z\s?)", "", datetime_format)
+                datetime_format = re.sub(r"%T", "%H:%M", datetime_format)
 
-def edit(pluginmanager: PluginManager, journal_name: str, last_n: int) -> None:
-    journal = Journal.from_name(journal_name, pluginmanager)
-    journal.edit(last_n)
+        except AttributeError:
+            datetime_format = None
 
+        serializer = MarkdownSerializer(datetime_format)
+        journal_string = "\n\n".join(
+            serializer.serialize_entry(entry) for entry in entries
+        )
 
-def delete(pluginmanager: PluginManager, journal_name: str, last_n: int) -> None:
-    journal = Journal.from_name(journal_name, pluginmanager)
-    journal.delete(last_n)
-
-
-def compose(pluginmanager: PluginManager, journal_name: Optional[str]) -> None:
-    journal = Journal.from_name(journal_name, pluginmanager)
-
-    entry_string = open_editor()
-
-    print_err()
-
-    if len(entry_string) < _install_min_entry_length:
-        print_err("Entry not saved. Did you type something?")
-        sys.exit(1)
-
-    entry = parse_entry(entry_string)
-    journal.add(entry)
-
-    print_err("Entry saved")
+        return journal_string

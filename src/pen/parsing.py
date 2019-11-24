@@ -1,15 +1,20 @@
 import re
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import dateparser
 from dateparser import parse
 
-from .config import app_config, user_locale
 from .entry import Entry
 
 
-def parse_entry(text: str, date: Optional[datetime] = None) -> Entry:
+if TYPE_CHECKING:
+    from .config import AppConfig
+
+
+def parse_entry(
+    config: "AppConfig", text: str, date: Optional[datetime] = None
+) -> Entry:
     sep = re.search(r"([?!.]+\s+|\n)", text)
     title = text[: sep.end()].strip() if sep else text.strip()
     body = text[sep.end() :].strip() if sep else ""
@@ -19,7 +24,7 @@ def parse_entry(text: str, date: Optional[datetime] = None) -> Entry:
 
     colon_pos = title.find(": ")
     if colon_pos > 0:
-        date = parse_datetime(text[:colon_pos])
+        date = parse_datetime(config, text[:colon_pos])
 
     if not date:
         date = datetime.now()
@@ -52,32 +57,32 @@ def convert_to_dateparser_locale(locale_string: Optional[str]) -> Optional[str]:
     return None
 
 
-def parse_datetime(dt_string: str) -> datetime:
+def parse_datetime(config: "AppConfig", dt_string: str) -> datetime:
     settings = {"PREFER_DATES_FROM": "past"}
-    user_locale_ = user_locale()
-    locales = [convert_to_dateparser_locale(user_locale_)] if user_locale_ else None
+    user_locale = config.get("locale")
+    locales = [convert_to_dateparser_locale(user_locale)] if user_locale else None
 
-    if app_config.get("date_format"):
+    if config.get("date_format"):
         return parse(
             dt_string,
             locales=locales,
-            date_formats=[app_config.get("date_format")],
+            date_formats=[config.get("date_format")],
             settings=settings,
         )
 
-    if app_config.get("locale"):
+    if config.get("locale"):
         return parse(
             dt_string,
             locales=locales,
-            languages=[app_config.get("locale")],
+            languages=[config.get("locale")],
             settings=settings,
         )
 
-    if app_config.get("date_order"):
+    if config.get("date_order"):
         return parse(
             dt_string,
             locales=locales,
-            settings={**settings, "DATE_ORDER": app_config.get("date_order")},
+            settings={**settings, "DATE_ORDER": config.get("date_order")},
         )
 
     return parse(dt_string, locales=locales, settings=settings)

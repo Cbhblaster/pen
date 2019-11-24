@@ -1,23 +1,26 @@
-from typing import List
+from argparse import _SubParsersAction
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 import pluggy
 
 from .entry import Entry
 
 
+if TYPE_CHECKING:
+    from .config import ArgParser
+
+
 hookspec = pluggy.HookspecMarker("pen")
+"""Marker to be imported and used in plugins (see pluggy documentation for details)"""
 
 
 class EntrySerializer:
-    # todo: what if no file_type available? Try and see if exception thrown?
-    #  maybe use hookwrapper to turn exceptions into None unless
-    #  'pen install' is run. still less efficient than firstresult=True though...
-
     @hookspec(firstresult=True)
     def serialize_entry(self, entry: Entry) -> str:
         """
         Serialize a single entry into a string. The string must to be
         deserializable into the exact same Entry again by `deserialize_entry`.
+
         Must never throw an Exception.
         """
 
@@ -39,3 +42,41 @@ class EntrySerializer:
 
         Throw `pen.SerializationException` entry_text is corrupted.
         """
+
+
+class JournalFormatter:
+    @hookspec(firstresult=True)
+    def format_journal(self, entries: List[Entry]) -> str:
+        """
+        Turn a list of entries into a single string that can be directly
+        printed to the console. The string should ideally put a line break at
+        every 88 characters so that it is displayed correctly on all terminals.
+        This can also be implemented as a @hookwrapper that only post-processes
+        an already serialized entry to e.g. add color through ansi escape
+        sequences.
+
+        Must never throw an Exception.
+        """
+
+
+@hookspec  # todo spec
+def get_env_options() -> List[Tuple[str, Any]]:
+    """"""
+
+
+@hookspec  # todo spec
+def prepare_args(args: List[str], parser: "ArgParser") -> None:
+    """"""
+
+
+@hookspec  # todo spec
+def add_global_options(parser: "ArgParser") -> None:
+    """"""
+
+
+@hookspec  # todo spec
+def add_subparser(subparsers: _SubParsersAction) -> None:
+    """"""
+
+
+hookimpl = pluggy.HookimplMarker("pen")

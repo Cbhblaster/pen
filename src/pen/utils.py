@@ -4,7 +4,11 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from tempfile import mkstemp
-from typing import Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
+
+
+if TYPE_CHECKING:
+    from pen.config import AppConfig
 
 
 _no_editor_message = """\
@@ -77,11 +81,8 @@ def input_err(prompt: str = "") -> str:
 print_err = functools.partial(print, file=sys.stderr)
 
 
-def open_editor(text: Optional[str] = None) -> str:
-    # todo importing here to avoid circular import. Should be changed if possible
-    from .config import user_editor
-
-    editor = user_editor()
+def open_editor(config: "AppConfig", text: Optional[str] = None) -> str:
+    editor = config.get("editor")
 
     if text and not editor:
         print_err(_no_editor_message)

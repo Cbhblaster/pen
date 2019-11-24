@@ -1,35 +1,22 @@
 import os
-import re
 import sys
 import time
 import warnings
-from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Any, List, Optional, Tuple
 
-import pluggy
-from pluggy import PluginManager
+from tomlkit.toml_document import TOMLDocument
 
-from . import __version__
-from .config import (
-    DEFAULT_PEN_HOME,
-    PEN_HOME_ENV,
-    AppConfig,
-    app_config,
-    env_locale,
-    get_config_path,
-)
-from .hookspec import EntrySerializer
-from .journal import compose, delete, edit, list_journals, read
+from pen.config import get_config
+
+from .config import DEFAULT_PEN_HOME, PEN_HOME_ENV, AppConfig
 from .parsing import convert_to_dateparser_locale
-from .serializing import MarkdownSerializer
 from .utils import ask, print_err, yes_no
 
 
 _install_msg_delay = (
     0.3  # a bit of delay makes the walls of text a bit easier to follow
 )
-_default_command = "compose"
 
 _welcome_message = """\
 ********** Welcome to pen! **********
@@ -97,7 +84,7 @@ def setup_sync() -> bool:
     return git_sync
 
 
-def install() -> None:
+def install(config: AppConfig) -> None:
     time_locale = ""
     date_order = ""
     time_first = None
@@ -143,7 +130,7 @@ def install() -> None:
 
         # todo check if journals already exist in journal_directory
 
-    locale_from_env = env_locale()
+    locale_from_env = config.get("locale")
     if locale_from_env and convert_to_dateparser_locale(locale_from_env):
         time_locale = locale_from_env
         print_err(_locale_message.format(time_locale))
@@ -177,17 +164,22 @@ def install() -> None:
     print_err(_divider)
     time.sleep(_install_msg_delay)
 
-    app_config.set("default_journal", default_journal)
-    app_config.set("journal_directory", journal_dir)
-    app_config.set("git_sync", git_sync)
+    new_config = TOMLDocument()
+    new_config["pen"] = {}
+
+    new_config["pen"]["default_journal"] = default_journal
+    new_config["pen"]["journal_directory"] = journal_dir
+    new_config["pen"]["git_sync"] = git_sync
     if date_order:
-        app_config.set("date_order", date_order)
+        new_config["pen"]["date_order"] = date_order
 
     if time_first:
-        app_config.set("time_before_date", time_first)
+        new_config["pen"]["time_before_date"] = time_first
 
     if time_locale:
-        app_config.set("locale", time_locale)
+        new_config["pen"]["locale"] = time_locale
+
+    config.save(new_config)
 
     print_err("All done! You can now start using pen!")
     print_err("Hit enter to start writing your first entry...")
@@ -195,129 +187,24 @@ def install() -> None:
     input()
 
 
-class PenApplication:
-    def __init__(self, config: AppConfig, pluginmanager: PluginManager):
-        self.config = config
-        self.pluginmanager = pluginmanager
-
-    def compose_command(self, args: Namespace) -> None:
-        compose(self.pluginmanager, args.journal)
-
-    def edit_command(self, args: Namespace) -> None:
-        edit(self.pluginmanager, args.journal, args.last_n)
-
-    def read_command(self, args: Namespace) -> None:
-        read(self.pluginmanager, args.journal, args.last_n)
-
-    def list_command(self, _: Namespace) -> None:
-        list_journals()
-
-    def delete_command(self, args: Namespace) -> None:
-        delete(self.pluginmanager, args.journal, args.last_n)
-
-
-def _is_installed() -> bool:
-    return get_config_path().exists()
-
-
-def _prepare_args(argv: List[str], commands: Set[str]) -> List[str]:
-    for i, arg in enumerate(argv):
-        match = re.fullmatch(r"-(\d+)", arg)
-        if match:
-            argv[i : i + 1] = ["-n", match[1]]
-
-    # if user not asking for help or typing a specific command, add default command
-    if not ({"-h", "--help"}.intersection(argv) or commands.intersection(argv[0:1])):
-        argv = [_default_command] + argv
-
-    return argv
+def _is_installed(config: AppConfig) -> bool:
+    return config.config_file_exists()
 
 
 def main(argv: Optional[List[str]] = None) -> None:
     if not sys.warnoptions:
         warnings.simplefilter("ignore")
 
-    pm = pluggy.PluginManager("pen")
-    pm.add_hookspecs(EntrySerializer)
-    pm.load_setuptools_entrypoints("pen")
-
-    pm.register(MarkdownSerializer(), f"serializer-{MarkdownSerializer.file_type}")
-
-    app = PenApplication(app_config, pm)
-
     argv = argv if argv is not None else sys.argv[1:]
-    parser = ArgumentParser(prog="pen", formatter_class=RawTextHelpFormatter)
 
-    parser.add_argument(
-        "-V",
-        "--version",
-        dest="version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help="Prints version information and exits",
-    )
+    plugins: List[Tuple[Any, str]] = []
 
-    journal_parser = ArgumentParser(add_help=False)
-    journal_parser.add_argument(
-        "journal",
-        default=None,
-        type=str,
-        nargs="?",
-        help="Journal you want to use (default can be set in your pen config)",
-    )
+    config = get_config(argv, plugins)
 
-    filter_parser = ArgumentParser(add_help=False)  # used as parent parser
-    filter_parser.add_argument(
-        "-n",
-        dest="last_n",
-        default=None,
-        metavar="N",
-        type=int,
-        help="Only use the <n> most recent entries. You can also use '-N'"
-        " instead of '-n N', for example '-6' is equivalent to '-n 6'.",
-    )
+    if not _is_installed(config):
+        install(config)
 
-    _commands_description = """
-compose:   Create a new journal entry (default command)
-read:      Read from your journals
-edit:      Edit old entries
-delete:    Delete old entries (can't be undone!)
-list:      List journals you have created and their paths
-
-See 'pen <command> --help' to read more about a specific command.
-"""
-
-    subparsers = parser.add_subparsers(
-        title="These are all the pen commands available",
-        metavar="",
-        description=_commands_description,
-    )
-
-    compose_parser = subparsers.add_parser("compose", parents=[journal_parser])
-    compose_parser.set_defaults(func=app.compose_command)
-
-    edit_parser = subparsers.add_parser("edit", parents=[journal_parser, filter_parser])
-    edit_parser.set_defaults(func=app.edit_command)
-
-    list_parser = subparsers.add_parser("list")
-    list_parser.set_defaults(func=app.list_command)
-
-    delete_parser = subparsers.add_parser(
-        "delete", parents=[journal_parser, filter_parser]
-    )
-    delete_parser.set_defaults(func=app.delete_command)
-
-    read_parser = subparsers.add_parser("read", parents=[journal_parser, filter_parser])
-    read_parser.set_defaults(func=app.read_command)
-    # todo --title/--short/--oneline
-
-    commands = set(subparsers.choices.keys())
-    argv = _prepare_args(argv, commands)
-
-    parsed_args = parser.parse_args(argv)
-
-    if not _is_installed():
-        install()
+    parsed_args = config.cli_args
 
     if "func" in parsed_args:
-        parsed_args.func(parsed_args)
+        parsed_args.func(config, parsed_args)
