@@ -4,7 +4,7 @@ import sys
 from collections.abc import Mapping
 from tempfile import mkstemp
 from textwrap import wrap
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Collection, Optional
 
 
 if TYPE_CHECKING:
@@ -34,20 +34,19 @@ def yes_no(prompt: str, default: Optional[bool] = None) -> bool:
 
 def ask(
     prompt: str,
-    options: Optional[List[str]] = None,
-    default: Optional[str] = "",
+    options: Optional[Collection[str]] = None,
+    default: Optional[str] = None,
     validator: Optional[Callable[[str], bool]] = None,
 ) -> str:
     assert not options or not validator, "Can't use both a validator and options"
 
-    default = default or ""
     options_string = f"[{'/'.join(options)}] " if options else ""
     prompt += f" (leave blank for '{default}')" if default else ""
     prompt += "? "
     prompt += options_string
 
     if not options and not validator:
-        return input_err(prompt) or default
+        return input_err(prompt) or default or ""
 
     assert not default or not options or default in options
 
@@ -57,7 +56,7 @@ def ask(
 
         return validator(answ) if validator else True
 
-    answer = input_err(prompt) or default
+    answer = input_err(prompt) or default or ""
     while not validate(answer):
         if options:
             print_err(
@@ -65,7 +64,7 @@ def ask(
             )
         else:
             print_err("Invalid answer, please try again")
-        answer = input_err(prompt) or default
+        answer = input_err(prompt) or default or ""
 
     return answer
 

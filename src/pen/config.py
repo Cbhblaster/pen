@@ -18,8 +18,8 @@ from pen.exceptions import UsageError
 from . import commands
 from .hookspec import hookimpl
 from .journal import MarkdownPrinter
-from .serializing import MarkdownSerializer
-from .utils import merge_dicts
+from .serializing import JrnlImporter, MarkdownSerializer
+from .utils import merge_dicts, print_err
 
 
 HOME = Path().home()
@@ -118,6 +118,8 @@ class AppConfig:
         self._config_file = ConfigFile(_config_path())
         if self._config_file.exists():
             content = self.load()
+            _verify_journal_paths(content)
+            self.save(content)
             merge_dicts(self._config, content)
 
         env_options = self.pluginmanager.hook.get_env_options()
@@ -195,6 +197,24 @@ def get_env_options() -> List[Tuple[str, Any]]:
     return env_vars
 
 
+def _verify_journal_paths(config: TOMLDocument) -> None:
+    missing = []
+
+    for journal_name, journal_config in config["pen"].get("journals", {}).items():
+        if "path" in journal_config:
+            path = Path(journal_config["path"])
+            if not path.exists():
+                print_err(
+                    f"Journal at {path} does not seem to exist anymore. If you"
+                    f" moved it, use 'pen import <path>' so that Pen can find it"
+                    f" again."
+                )
+                missing.append(journal_name)
+
+    for journal in missing:
+        del config.get("journals")[journal]
+
+
 def get_config(args: List[str], plugins: List[Tuple[Any, str]]) -> AppConfig:
     pm = _get_plugin_manager(plugins)
     config = AppConfig(args, pm)
@@ -230,6 +250,8 @@ def _env_editor() -> Optional[List[str]]:
 
 
 def _get_plugin_manager(plugins: Iterable[Tuple[Any, str]]) -> pluggy.PluginManager:
+    from .serializing import SERIALIZER_PREFIX, IMPORTER_PREFIX
+
     pm = pluggy.PluginManager("pen")
     pm.add_hookspecs(pen.hookspec)
     pm.add_hookspecs(pen.hookspec.EntrySerializer)
@@ -241,7 +263,10 @@ def _get_plugin_manager(plugins: Iterable[Tuple[Any, str]]) -> pluggy.PluginMana
     pm.register(pen)  # version option
     pm.register(commands)  # subcommands
     pm.register(MarkdownPrinter(), f"printer-{MarkdownSerializer.file_type}")
-    pm.register(MarkdownSerializer(), f"serializer-{MarkdownSerializer.file_type}")
+    pm.register(
+        MarkdownSerializer(), f"{SERIALIZER_PREFIX}{MarkdownSerializer.file_type}"
+    )
+    pm.register(JrnlImporter(), f"{IMPORTER_PREFIX}{JrnlImporter.file_type}")
 
     for plugin, name in plugins:
         pm.register(plugin, name)

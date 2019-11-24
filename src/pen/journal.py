@@ -17,32 +17,12 @@ if TYPE_CHECKING:
     from .config import AppConfig
 
 
-_file_has_no_type_msg = """\
-Cannot read journal at {}.
-The file type cannot be determined from the file. Try to import the journal
-first using 'pen import <path>'. You might also need to install a plugin first
-to add support for this format. Consult the documentation or ask for help on
-the issue tracker."""
-
-
-def file_type_from_path(path: Path) -> str:
-    with path.open("r") as fp:
-        line = fp.readline()
-
-    file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
-
-    if file_type:
-        return file_type.group(1)
-
-    raise UsageError(_file_has_no_type_msg.format(path))
-
-
 class Journal:
     def __init__(self, path: Path, config: "AppConfig", file_type: Optional[str]):
         self.path = path
         self.name = path.stem
         self.config = config
-        self.file_type = file_type or file_type_from_path(path)
+        self.file_type = file_type or file_type_from_marker(path)
         self.serializer = JournalSerializer(config.pluginmanager, self.file_type)
 
     @classmethod
@@ -199,3 +179,23 @@ class MarkdownPrinter:
         )
 
         return journal_string
+
+
+def file_type_from_marker(path: Path) -> str:
+    with path.open("r") as fp:
+        line = fp.readline()
+
+    file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
+
+    if file_type:
+        return file_type.group(1)
+
+    raise UsageError(_file_has_no_type_msg.format(path))
+
+
+_file_has_no_type_msg = """\
+Cannot read journal at {}.
+The file type cannot be determined from the file. Try to import the journal
+first using 'pen import <path>'. You might also need to install a plugin first
+to add support for this format. Consult the documentation or ask for help on
+the issue tracker."""
