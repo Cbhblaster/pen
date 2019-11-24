@@ -8,6 +8,8 @@ tries to create a similar interface that is just as easy to use, but Pen is
 rewritten from the ground up in modern Python, aiming for a more stable 
 and enhanced experience. Currently, Pen is still in an early stage, but some
 nice additional features are planned. 
+Windows is currently not supported. If you are on Windows (and not using WSL) and want 
+to use Pen, leave an issue on GitHub and ask for support. 
 
 ## Journaling
 Writing about your daily routine has been linked to therapeutic health benefits 
