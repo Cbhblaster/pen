@@ -135,6 +135,7 @@ class Journal:
                 f"Cannot read journal '{self.name}'. Journal is empty (or corrupt)"
             )
 
+        # todo only use pager if output is longer than terminal height
         pager = get_pager(self.config)
         pager(self.config.pluginmanager.hook.format_journal(entries=entries))
 

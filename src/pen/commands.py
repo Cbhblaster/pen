@@ -501,6 +501,9 @@ File type '{}' not supported. Please install a plugin that supports this format.
 """
 
 _welcome_message = """\
+PLEASE NOTE: THIS IS AN ALPHA RELEASE - this means important features are missing,
+bugs may occur and upgrading might break Pen. You have been warned.
+
 ********** Welcome to pen! **********
 It looks like you haven't used pen before (at least on this machine). Before you
 start jotting down your thoughts, please allow me to ask a few questions on how
