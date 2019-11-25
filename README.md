@@ -57,11 +57,12 @@ change.
 | Feature | ? | Note |
 |---------|---|------|
 | Fully text based | ✔ | |
-| Multiple Journals | ✔ | |
+| Uses your OS settings when possible<br>(from environment variables) | ✔ | $EDITOR, $VISUAL, $LC_TIME<br>and more!|
+| Multiple Journals | ✔ | One can be set as default |
 | Writing/Deleting/Editing entries | ✔ | |
 | Journals as single file | ✔ |  |
-| Plugin System | ✔ | (still being extended)<br>based on [pluggy](https://github.com/pytest-dev/pluggy) |
-| Import from jrnl | ✔ | |
+| Plugin System | ✔\* | (\*still being extended)<br>based on [pluggy](https://github.com/pytest-dev/pluggy) |
+| Extendable Import System | ✔ | supports imports from **jrnl** |
 | Filtering by date, tag, starred |  | |
 | Fast Search |  | |
 | Tags |  | |
