@@ -2,14 +2,19 @@
 
 Pen allows you to quickly jot down your thoughts right from the command line. 
 All your journals will be stored as text, which means you can simply put them into cloud storage
-or on a USB flash drive and access it from anywhere, even without pen itself. 
+or on a USB flash drive and access them from anywhere, even without Pen itself. 
 It takes a lot of inspiration from [jrnl](https://github.com/jrnl-org/jrnl) and
 tries to create a similar interface that is just as easy to use, but Pen is 
 rewritten from the ground up in modern Python, aiming for a more stable 
 and enhanced experience. Currently, Pen is still in an early stage, but some
-nice additional features are planned. 
-Windows is currently not supported. If you are on Windows (and not using WSL) and want 
-to use Pen, leave an issue on GitHub and ask for support. 
+nice additional features are planned. If you want to try Pen out now, don't be afraid!
+If you run into any problems or bugs, please be sure to
+[create an issue](https://github.com/pspeter/pen/issues/new) describing your problem.
+
+*Windows is currently not supported. If you want to use Pen on Windows, you can leave a 
+request for Windows support on the [the issue tracker](https://github.com/pspeter/pen/issues)
+or upvote an existing thread. Pen does work and is being tested on
+[the WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10), though.*
 
 ## Journaling
 Writing about your daily routine has been linked to therapeutic health benefits 
