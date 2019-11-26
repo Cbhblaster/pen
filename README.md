@@ -40,11 +40,24 @@ or how much weight you lost over time is a great motivator, as you can
 always look back and see how fast you progressed.
 
 
+## Installing Pen
+
+It is recommend to install Pen using [pipx](https://github.com/pipxproject/pipx):
+
+```pipx install pen```
+
+If you don't want to use pipx, you can also use pip:
+
+```pip install --user pen```
+
+To upgrade, either use `pipx upgrade pen` or `pip install --user --upgrade pen`
+depending on how you installed Pen.
+
+
 ## Using Pen
-To make a new entry, just type:
-```
-pen
-```
+To write your first entry, just type `pen` into your command line and hit enter!
+If you are transitioning from `jrnl`, you can instead import your old jrnls using
+`pen import /path/to/journals/*`.
 If you haven't run Pen on this machine before, a short setup dialog will start, 
 asking about your preferences like which editor you want to use. Pen will 
 always try to infer these settings from your environment variables and only ask
@@ -57,9 +70,13 @@ your config using Dropbox, Google Cloud or a different cloud storage service.
 
 ## (Planned) Features
 
-Implemented features are marked with a ✔.
-The list is ordered by their planned implementation order, but the order may
-change.
+To see all currently supported commands, type `pen --help`. To see more information
+about a specific command type `pen <command> --help`. 
+
+The following list also gives a broad overview over the current features of Pen.
+Implemented features are marked with a ✔. The list is ordered by their planned 
+implementation order, but the order may change at any time.
+
 
 | Feature | ? | Note |
 |---------|---|------|
