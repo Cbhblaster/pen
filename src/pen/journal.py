@@ -143,7 +143,7 @@ class Journal:
 
     @staticmethod
     def create(config: "AppConfig", name: str, path: Path) -> "Journal":
-        home = config.get("journal_directory")
+        home = Path(config.get("journal_directory"))
         journal_path = home / (name + ".txt")
         journal_path.touch(0o700)
         # todo don't hardcode default
