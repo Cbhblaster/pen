@@ -1,5 +1,6 @@
 -e .
 pytest
+pytest-datadir
 pytest-cov
 hypothesis
 tox
