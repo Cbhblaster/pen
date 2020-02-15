@@ -163,6 +163,9 @@ def install_command(config: "AppConfig") -> None:
     if time_locale:
         new_config["pen"]["locale"] = time_locale
 
+    for key, value in new_config["pen"].items():
+        config.set(key, value)
+
     config.save(new_config)
 
     print_err("All done! You can now start using pen!")

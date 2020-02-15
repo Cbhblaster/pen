@@ -27,7 +27,7 @@ class Journal:
 
     @classmethod
     def from_name(cls, name: Optional[str], config: "AppConfig") -> "Journal":
-        home = config.get("journal_directory")
+        home = Path(config.get("journal_directory"))
         name = name or config.get("default_journal")
         if not name:
             raise UsageError(

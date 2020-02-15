@@ -9,7 +9,8 @@ To release a version ``MAJOR.MINOR.PATCH``, follow these steps:
    Ensure your are updated and in a clean working tree.
 
  - [ ] After all tests pass, bump the version in `setup.py` and `_version.py` 
-    and commit the changes
+    
+ - [ ] Commit the version bump!!
 
  - [ ] Create a distribution and check it
 

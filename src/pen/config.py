@@ -72,6 +72,7 @@ class ConfigFile:
             return tomlkit.loads(f.read())
 
     def write(self, data: TOMLDocument) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("w") as f:
             f.write(data.as_string())
 
