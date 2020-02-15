@@ -20,11 +20,13 @@ To release a version ``MAJOR.MINOR.PATCH``, follow these steps:
 
         twine upload dist/* 
 
+ - [ ] Test that it can be installed with `pip install`
+ 
  - [ ] Tag the release commit and push it:
 
         git tag -a MAJOR.MINOR.PATCH 
         git push
         git push --tags
 
- - [ ] Test that it can be installed with `pip install`
+ - [ ] Create a release on GitHub
  
