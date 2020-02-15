@@ -5,7 +5,8 @@ import dateparser
 import pytest
 
 import pen
-from pen.config import PEN_HOME_ENV, AppConfig, _get_plugin_manager
+from pen.commands import PEN_HOME_ENV
+from pen.config import AppConfig, _get_plugin_manager
 
 
 @pytest.fixture(autouse=True, scope="session")

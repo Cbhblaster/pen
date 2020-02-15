@@ -3,7 +3,6 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from tempfile import mkstemp
-from textwrap import wrap
 from typing import TYPE_CHECKING, Any, Callable, Collection, Optional
 
 
@@ -80,9 +79,7 @@ def input_err(prompt: str = "") -> str:
 def print_err(*args: Any, sep: str = " ", **kwargs: Any) -> None:
     text = sep.join([str(arg) for arg in args])
     print(
-        "\n".join(wrap(text, width=88, drop_whitespace=False)),
-        file=sys.stderr,
-        **kwargs,
+        text, file=sys.stderr, **kwargs,
     )
 
 

@@ -25,7 +25,7 @@ from .utils import ask, open_editor, print_err, yes_no
 
 
 if TYPE_CHECKING:
-    from .config import AppConfig, ArgParser, PEN_HOME_ENV, DEFAULT_PEN_HOME
+    from .config import AppConfig, ArgParser
 
 
 def compose_command(config: "AppConfig", args: Namespace) -> None:
@@ -72,7 +72,7 @@ def install_command(config: "AppConfig") -> None:
     time_locale = ""
     date_order = ""
     time_first = None
-    journal_dir = os.getenv(PEN_HOME_ENV)
+    journal_dir = os.getenv(PEN_HOME_ENV, "")
 
     print_err(_welcome_message)
     time.sleep(_install_msg_delay)
@@ -555,3 +555,7 @@ for your first one, though.
 _divider = """
 --------------------------------------------------------------------------------
 """
+HOME = Path().home()
+PEN_HOME_ENV = "PEN_HOME"
+DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
+DEFAULT_PEN_HOME = HOME / ".local" / "pen"

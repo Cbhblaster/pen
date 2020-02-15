@@ -16,16 +16,11 @@ import pen
 from pen.exceptions import UsageError
 
 from . import commands
+from .commands import DEFAULT_CONFIG_PATH, DEFAULT_PEN_HOME, PEN_HOME_ENV
 from .hookspec import hookimpl
 from .journal import MarkdownPrinter
 from .serializing import JrnlImporter, MarkdownSerializer
 from .utils import merge_dicts, print_err
-
-
-HOME = Path().home()
-PEN_HOME_ENV = "PEN_HOME"
-DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
-DEFAULT_PEN_HOME = HOME / ".local" / "pen"
 
 
 _commands_description = """
@@ -107,7 +102,6 @@ class ConfigFile:
 class AppConfig:
     """
     Reads and provides configuration from args, environment variables and config files.
-    Does not allow saving new configuration to file currently.
     """
 
     def __init__(self, args: List[str], pluginmanager: PluginManager) -> None:
