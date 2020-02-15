@@ -32,6 +32,10 @@ def empty_config() -> AppConfig:
 def pen_home(monkeypatch: Any, tmpdir: Path) -> Path:
     journal_dir = tmpdir / "journals"
     journal_dir.mkdir()
+    monkeypatch.setattr(pen.commands, "HOME", tmpdir)
+    monkeypatch.setattr(
+        pen.config, "DEFAULT_CONFIG_PATH", tmpdir / ".config" / "pen" / "pen.toml"
+    )
+    monkeypatch.setattr(pen.config, "DEFAULT_PEN_HOME", journal_dir)
     monkeypatch.setenv(PEN_HOME_ENV, str(journal_dir))
-    monkeypatch.setattr(pen.config, "DEFAULT_PEN_HOME", str(journal_dir))
     return journal_dir

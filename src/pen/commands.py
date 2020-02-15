@@ -27,6 +27,11 @@ from .utils import ask, open_editor, print_err, yes_no
 if TYPE_CHECKING:
     from .config import AppConfig, ArgParser
 
+HOME = Path().home()
+PEN_HOME_ENV = "PEN_HOME"
+DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
+DEFAULT_PEN_HOME = HOME / ".local" / "pen"
+
 
 def compose_command(config: "AppConfig", args: Namespace) -> None:
     min_entry_length = 1
@@ -558,7 +563,3 @@ for your first one, though.
 _divider = """
 --------------------------------------------------------------------------------
 """
-HOME = Path().home()
-PEN_HOME_ENV = "PEN_HOME"
-DEFAULT_CONFIG_PATH = HOME / ".config" / "pen" / "pen.toml"
-DEFAULT_PEN_HOME = HOME / ".local" / "pen"
