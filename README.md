@@ -1,5 +1,8 @@
 # 🖋️ Pen - your command line diary
 
+![PyPI](https://img.shields.io/pypi/v/pen.svg)
+![github build](https://img.shields.io/github/workflow/status/pspeter/pen/Python%20application)
+
 Pen allows you to quickly jot down your thoughts right from the command line. 
 All your journals will be stored as text, which means you can simply put them into cloud storage
 or on a USB flash drive and access them from anywhere, even without Pen itself. 
