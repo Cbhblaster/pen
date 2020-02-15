@@ -223,7 +223,7 @@ def import_journal(
         # still nothing? We have to ask the user
         print_err(_file_type_not_found_prompt.format(old_path))
         old_file_type = ask(
-            "Which file  (leave blank to skip)", all_import_options, default=""
+            "Which type (leave blank to skip)", all_import_options, default=""
         )
         print_err()
         time.sleep(_install_msg_delay)
@@ -362,7 +362,7 @@ def _iter_journals(config: "AppConfig") -> Iterable[Path]:
 
 @hookimpl
 def add_subparser(early_config: "AppConfig", subparsers: _SubParsersAction) -> None:
-    journal_parser = ArgumentParser(add_help=False)
+    journal_parser = ArgumentParser(add_help=False)  # used as parent parser
     journal_parser.add_argument(
         "journal",
         default=None,
@@ -420,7 +420,6 @@ def add_subparser(early_config: "AppConfig", subparsers: _SubParsersAction) -> N
         help=file_type_help.format(", ".join([f"'{t}'" for t in supported_file_types])),
     )
     group = import_parser.add_mutually_exclusive_group()
-
     group.add_argument(
         "--move",
         "-m",

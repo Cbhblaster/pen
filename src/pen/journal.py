@@ -68,8 +68,10 @@ class Journal:
         date from most recent to least."""
         last_n = abs(last_n) if last_n else None
         with self.path.open("r") as fp:
-            _ = fp.readline()
+            marker = fp.readline()
             journal_text = fp.read()
+            if _extract_file_type_marker(marker) is None:
+                journal_text = marker + journal_text
 
         entries = self.serializer.deserialize(journal_text)
         try:
@@ -145,7 +147,7 @@ class Journal:
         journal_path = home / (name + ".txt")
         journal_path.touch(0o700)
         # todo don't hardcode default
-        file_type = config.get("default_file_type", default="default-pen-markdown")
+        file_type = config.get("default_file_type", default="pen-default-markdown")
 
         with journal_path.open("w") as fp:
             fp.write(f"file_type: {file_type}\n")
@@ -186,12 +188,17 @@ def file_type_from_marker(path: Path) -> str:
     with path.open("r") as fp:
         line = fp.readline()
 
-    file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
+    file_type = _extract_file_type_marker(line)
 
     if file_type:
-        return file_type.group(1)
+        return file_type
 
     raise UsageError(_file_has_no_type_msg.format(path))
+
+
+def _extract_file_type_marker(line: str) -> Optional[str]:
+    file_type = re.match(r"^file_type:\s*([\w\-_]*)\s*$", line)
+    return file_type.group(1) if file_type else None
 
 
 _file_has_no_type_msg = """\

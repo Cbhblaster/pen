@@ -70,37 +70,37 @@ class ArgParser:
 
 class ConfigFile:
     def __init__(self, path: Path) -> None:
-        self._path = path
+        self.path = path
 
     def read(self) -> TOMLDocument:
-        with self._path.open() as f:
+        with self.path.open() as f:
             return tomlkit.loads(f.read())
 
     def write(self, data: TOMLDocument) -> None:
-        with self._path.open("w") as f:
+        with self.path.open("w") as f:
             f.write(data.as_string())
 
     def exists(self) -> bool:
-        return self._path.exists()
+        return self.path.exists()
 
     def create(self) -> None:
-        if not self._path.exists():
+        if not self.path.exists():
             try:
                 mode = 0o700  # only current user can modify file
-                self._path.parent.mkdir(mode, parents=True, exist_ok=True)
-                self._path.touch(mode)
+                self.path.parent.mkdir(mode, parents=True, exist_ok=True)
+                self.path.touch(mode)
                 cfg = TOMLDocument()
                 cfg["pen"] = {}
                 self.write(cfg)
             except Exception as err:
                 try:
                     # clean up if it was created already
-                    self._path.unlink()
+                    self.path.unlink()
                 except FileNotFoundError:
                     pass
 
                 raise RuntimeError(
-                    f"Could not create config file at {self._path}"
+                    f"Could not create config file at {self.path}"
                 ) from err
 
 
@@ -175,7 +175,7 @@ class AppConfig:
         content = self._config_file.read()
         if "pen" not in content:
             raise UsageError(
-                f"Config file at {self._config_file._path} is invalid,"
+                f"Config file at {self._config_file.path} is invalid,"
                 " no top level 'pen' table found. Please fix or remove"
                 " the file and try again."
             )
