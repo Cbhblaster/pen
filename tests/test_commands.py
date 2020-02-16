@@ -8,7 +8,8 @@ import pytest
 
 import pen.commands
 from pen import AppConfig, Entry
-from pen.commands import compose_command, import_journal
+from pen.commands import compose_command, import_journal, install_command
+from pen.config import DEFAULT_CONFIG_PATH
 
 
 if TYPE_CHECKING:
@@ -74,3 +75,22 @@ def test_import_journal(
     import_journal(empty_config, journal_path, new_file_type="pen-default-markdown")
 
     assert (pen_home / journal_name).exists()
+
+
+def test_install_command(
+    monkeypatch: "MonkeyPatch", pen_home: Path, empty_config: AppConfig,
+) -> None:
+    empty_config.cli_args = Namespace(command="compose")
+    journal_name = "default.md"
+
+    ask_answers = iter((str(pen_home), "DMY", "date", journal_name))
+
+    monkeypatch.setattr(pen.commands, "ask", lambda *_, **__: next(ask_answers))
+
+    monkeypatch.setattr("builtins.input", lambda *_: None)
+
+    monkeypatch.setattr(pen.commands, "yes_no", lambda *_, **__: False)
+
+    install_command(empty_config)
+
+    assert DEFAULT_CONFIG_PATH.exists()

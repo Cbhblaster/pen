@@ -29,12 +29,12 @@ def empty_config() -> AppConfig:
 
 
 @pytest.fixture(autouse=True)
-def pen_home(monkeypatch: Any, tmpdir: Path) -> Path:
-    journal_dir = tmpdir / "journals"
+def pen_home(monkeypatch: Any, tmp_path: Path) -> Path:
+    journal_dir = tmp_path / "journals"
     journal_dir.mkdir()
-    monkeypatch.setattr(pen.commands, "HOME", tmpdir)
+    monkeypatch.setattr(pen.commands, "HOME", tmp_path)
     monkeypatch.setattr(
-        pen.config, "DEFAULT_CONFIG_PATH", tmpdir / ".config" / "pen" / "pen.toml"
+        pen.config, "DEFAULT_CONFIG_PATH", tmp_path / ".config" / "pen" / "pen.toml"
     )
     monkeypatch.setattr(pen.config, "DEFAULT_PEN_HOME", journal_dir)
     monkeypatch.setenv(PEN_HOME_ENV, str(journal_dir))
