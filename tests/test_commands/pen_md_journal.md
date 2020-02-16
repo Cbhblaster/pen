@@ -1,3 +1,4 @@
+file_type: pen-default-markdown
 ## 2011-11-11 13:03 - aaaaa1
 
 foobar
