@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple
 
 import dateparser
 import pytest
@@ -29,13 +29,12 @@ def empty_config() -> AppConfig:
 
 
 @pytest.fixture(autouse=True)
-def pen_home(monkeypatch: Any, tmp_path: Path) -> Path:
+def pen_dirs(monkeypatch: Any, tmp_path: Path) -> Tuple[Path, Path]:
     journal_dir = tmp_path / "journals"
     journal_dir.mkdir()
+    config_path = tmp_path / ".config" / "pen" / "pen.toml"
     monkeypatch.setattr(pen.commands, "HOME", tmp_path)
-    monkeypatch.setattr(
-        pen.config, "DEFAULT_CONFIG_PATH", tmp_path / ".config" / "pen" / "pen.toml"
-    )
+    monkeypatch.setattr(pen.config, "DEFAULT_CONFIG_PATH", config_path)
     monkeypatch.setattr(pen.config, "DEFAULT_PEN_HOME", journal_dir)
     monkeypatch.setenv(PEN_HOME_ENV, str(journal_dir))
-    return journal_dir
+    return journal_dir, config_path
