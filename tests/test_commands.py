@@ -72,6 +72,8 @@ def test_import_journal(
         pen.commands, "ask", lambda _, options, *__, **___: next(iter(options))
     )
 
+    assert not (journal_dir / journal_name).exists()
+
     import_journal(empty_config, journal_path, new_file_type="pen-default-markdown")
 
     assert (journal_dir / journal_name).exists()
@@ -88,6 +90,8 @@ def test_install_command(
     monkeypatch.setattr(pen.commands, "ask", lambda *_, **__: next(ask_answers))
     monkeypatch.setattr("builtins.input", lambda *_: None)
     monkeypatch.setattr(pen.commands, "yes_no", lambda *_, **__: False)
+
+    assert not config_path.exists()
 
     install_command(empty_config)
 
