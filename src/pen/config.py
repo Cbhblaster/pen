@@ -253,8 +253,8 @@ def _get_plugin_manager(plugins: Iterable[Tuple[Any, str]]) -> pluggy.PluginMana
     pm.add_hookspecs(pen.hookspec.JournalFormatter)
     pm.load_setuptools_entrypoints("pen")
 
-    # hooks implemented in this file (yes it's ugly) todo change this
-    pm.register(__import__(__package__).config)  # type: ignore
+    # hooks implemented in this file
+    pm.register(sys.modules[__name__])
     pm.register(pen)  # version option
     pm.register(commands)  # subcommands
     pm.register(MarkdownPrinter(), f"printer-{MarkdownSerializer.file_type}")
