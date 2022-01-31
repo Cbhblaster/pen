@@ -12,12 +12,14 @@ To release a version ``MAJOR.MINOR.PATCH``, follow these steps:
     
  - [ ] Commit the version bump!!
 
+ - [ ] Update packages: `pip install --upgrade pip setuptools twine wheel`
+
  - [ ] Create a distribution and check it
 
         python setup.py sdist bdist_wheel
         twine check dist/*
 
- - [ ] Release to Pypy
+ - [ ] Release to Pypi
 
         twine upload dist/* 
 
